@@ -34,8 +34,16 @@
 - **Objective:** ทำให้เอกสารทันสมัยอยู่เสมอและจัดการการเปลี่ยนแปลงโครงสร้างข้อมูลได้
 - **Implementation:**
     - **Docs Generator:** คำสั่ง `docs-gen` เพื่อแปลง Registry เป็น Markdown (Mintlify/Docusaurus format)
-    - **Versioning:** ระบบตรวจสอบ `version` ใน JSON; แจ้งเตือนหาก Schema ที่ใช้เก่ากว่าข้อมูล
+    - **Versioning:** ระบบตรวจสอบ `version`ใน JSON; แจ้งเตือนหาก Schema ที่ใช้เก่ากว่าข้อมูล
     - **Git-Native Workflow:** Template สำหรับ GitHub Action เพื่อรัน `validate` ทุกครั้งที่เปิด Pull Request
+
+### 1.5 Group Scoping & Technical Validation (Strategic Pillar 1)
+- **Objective:** ป้องกันภาวะ "คีย์เวิร์ดกระจัดกระจาย" และสร้างระบบ Namespace ที่ยืดหยุ่นผ่านกลุ่ม (Groups)
+- **Implementation:**
+    - **Regex Pattern Validation:** อ่าน `pattern` จาก Schema ของแต่ละกลุ่มมาตรวจสอบจริง (เช่น ID ของกลุ่มนั้น ๆ ต้องเป็นไปตามที่กำหนด) โดยเลิกใช้ค่า Default แบบ Hardcoded
+    - **Enum (Values) Validation:** ตรวจสอบค่าในฟิลด์ประเภท Enum (เช่น status, type) ให้ตรงกับค่าที่อนุญาตใน Schema เท่านั้น
+    - **Group-Scoped Search Integration:** เตรียมโครงสร้างให้ระบบ Search สามารถเลือกค้นหาเฉพาะกลุ่ม หรือจัดลำดับความสำคัญตามความเกี่ยวข้องของกลุ่มได้
+    - **Isolation Logic:** ป้องกันการใช้ ID ซ้ำซ้อนในกลุ่มที่มีวัตถุประสงค์ (Scope) ทับซ้อนกันเพื่อความเป็นระเบียบของ Knowledge Base
 
 ---
 

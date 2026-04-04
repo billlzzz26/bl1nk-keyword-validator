@@ -135,11 +135,114 @@ fn normalize_query(q: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+    use crate::schema::{KeywordRegistry, KeywordGroup, Metadata, ValidationConfig, ValidationRules, CustomFieldConfig, FieldSchema};
+    use std::collections::HashMap;
+
+    fn make_test_registry() -> KeywordRegistry {
+        KeywordRegistry {
+            version: "1.0.0".to_string(),
+            metadata: Metadata {
+                last_updated: "2026-04-04T00:00:00Z".to_string(),
+                description: "Test".to_string(),
+                owner: "test".to_string(),
+            },
+            groups: vec![
+                KeywordGroup {
+                    group_id: "projects".to_string(),
+                    group_name: "Projects".to_string(),
+                    description: "Test".to_string(),
+                    base_fields_schema: HashMap::new(),
+                    custom_field_allowed: CustomFieldConfig {
+                        enabled: false,
+                        max_one: false,
+                        description: "".to_string(),
+                        examples: None,
+                    },
+                    entries: vec![
+                        json!({
+                            "id": "proj-visual",
+                            "aliases": ["visual-story", "ภาพเรื่อง"],
+                            "description": "Visual Story Extension"
+                        }),
+                        json!({
+                            "id": "proj-docs",
+                            "aliases": ["api-docs", "เอกสาร"],
+                            "description": "API Documentation"
+                        }),
+                    ],
+                }
+            ],
+            validation: ValidationConfig {
+                rules: ValidationRules {
+                    alias_min_length: 2,
+                    alias_max_length: 50,
+                    description_min_length: 10,
+                    description_max_length: 255,
+                    custom_field_per_entry: 1,
+                    required_base_fields: vec![],
+                },
+                error_messages: HashMap::new(),
+            },
+        }
+    }
 
     #[test]
     fn test_normalize_query() {
         assert_eq!(normalize_query("Visual-Story"), "visual-story");
         assert_eq!(normalize_query("  mcp  "), "mcp");
         assert_eq!(normalize_query("ภาพเรื่อง"), "ภาพเรื่อง");
+    }
+
+    #[test]
+    fn test_search_exact_match() {
+        let searcher = KeywordSearch::new(make_test_registry());
+        let results = searcher.search("visual-story");
+        
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "proj-visual");
+        assert_eq!(results[0].match_type, "exact");
+    }
+
+    #[test]
+    fn test_search_partial_match() {
+        let searcher = KeywordSearch::new(make_test_registry());
+        let results = searcher.search("visual");
+        
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "proj-visual");
+        assert_eq!(results[0].match_type, "partial");
+    }
+
+    #[test]
+    fn test_search_thai_language() {
+        let searcher = KeywordSearch::new(make_test_registry());
+        let results = searcher.search("ภาพเรื่อง");
+        
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "proj-visual");
+        assert_eq!(results[0].match_type, "exact");
+    }
+
+    #[test]
+    fn test_search_priority() {
+        let mut registry = make_test_registry();
+        // เพิ่ม entry ที่มีคำว่า 'visual' เป็นส่วนหนึ่งของ alias
+        registry.groups[0].entries.push(json!({
+            "id": "proj-exact-visual",
+            "aliases": ["visual"], // exact match สำหรับคำว่า 'visual'
+            "description": "Exact match target"
+        }));
+
+        let searcher = KeywordSearch::new(registry);
+        let results = searcher.search("visual");
+        
+        assert_eq!(results.len(), 2);
+        // อันดับ 1 ต้องเป็น exact match
+        assert_eq!(results[0].id, "proj-exact-visual");
+        assert_eq!(results[0].match_type, "exact");
+        // อันดับ 2 เป็น partial match
+        assert_eq!(results[1].id, "proj-visual");
+        assert_eq!(results[1].match_type, "partial");
     }
 }

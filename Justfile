@@ -60,3 +60,7 @@ install:
 # Build for specific target (e.g., x86_64-unknown-linux-musl)
 build-musl:
     cargo build --release --target x86_64-unknown-linux-musl
+
+# Bump the registry version (major, minor, or patch)
+bump type:
+    ./scripts/bump-version.sh {{type}}

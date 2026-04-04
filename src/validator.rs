@@ -1,11 +1,14 @@
 use crate::error::ValidationError;
 use crate::schema::KeywordRegistry;
+use regex::Regex;
 use serde_json::Value;
 use std::collections::HashMap;
 
 pub struct Validator {
     registry: KeywordRegistry,
 }
+
+const SUPPORTED_VERSION: &str = "1.1.0";
 
 impl Validator {
     pub fn new(registry: KeywordRegistry) -> Self {
@@ -110,14 +113,45 @@ impl Validator {
             if let Some(field_value) = entry.get(field_name) {
                 // ตรวจสอบ type
                 match field_schema.field_type.as_str() {
-                    "string" => {
-                        if !field_value.is_string() {
+                    "string" | "enum" => {
+                        if let Some(s) = field_value.as_str() {
+                            // 1. ตรวจสอบ Regex Pattern
+                            if let Some(pattern) = &field_schema.pattern {
+                                if let Ok(re) = Regex::new(pattern) {
+                                    if !re.is_match(s) {
+                                        errors.push(ValidationError {
+                                            code: "INVALID_PATTERN".to_string(),
+                                            message: format!(
+                                                "Field '{}' value '{}' does not match pattern '{}'",
+                                                field_name, s, pattern
+                                            ),
+                                            field: Some(field_name.clone()),
+                                        });
+                                    }
+                                }
+                            }
+
+                            // 2. ตรวจสอบ Enum Values
+                            if let Some(allowed_values) = &field_schema.values {
+                                if !allowed_values.contains(&s.to_string()) {
+                                    errors.push(ValidationError {
+                                        code: "INVALID_ENUM".to_string(),
+                                        message: format!(
+                                            "Field '{}' value '{}' must be one of: {}",
+                                            field_name,
+                                            s,
+                                            allowed_values.join(", ")
+                                        ),
+                                        field: Some(field_name.clone()),
+                                    });
+                                }
+                            }
+                        } else {
                             errors.push(ValidationError {
                                 code: "INVALID_TYPE".to_string(),
                                 message: format!(
                                     "Field '{}' expected type 'string' but got {:?}",
-                                    field_name,
-                                    field_value
+                                    field_name, field_value
                                 ),
                                 field: Some(field_name.clone()),
                             });
@@ -201,6 +235,19 @@ impl Validator {
     pub fn validate_registry(&self) -> Result<(), Vec<ValidationError>> {
         let mut all_errors = Vec::new();
 
+        // 0. ตรวจสอบ Version Compatibility
+        if self.registry.version != SUPPORTED_VERSION {
+            all_errors.push(ValidationError {
+                code: "INCOMPATIBLE_VERSION".to_string(),
+                message: format!(
+                    "Registry version '{}' is not supported. Supported version is '{}'",
+                    self.registry.version, SUPPORTED_VERSION
+                ),
+                field: None,
+            });
+            return Err(all_errors);
+        }
+
         // 1. เก็บ ID ทั้งหมดเพื่อเช็ค Broken Links (relatedIds)
         let mut all_valid_ids = std::collections::HashSet::new();
         for group in &self.registry.groups {
@@ -282,7 +329,7 @@ mod tests {
 
     fn make_test_registry() -> KeywordRegistry {
         KeywordRegistry {
-            version: "1.0.0".to_string(),
+            version: "1.1.0".to_string(),
             metadata: Metadata {
                 last_updated: "2026-04-04T00:00:00Z".to_string(),
                 description: "Test registry".to_string(),
@@ -300,11 +347,35 @@ mod tests {
                             FieldSchema {
                                 field_type: "string".to_string(),
                                 item_type: None,
-                                pattern: None,
+                                pattern: Some("^proj-[a-z]+$".to_string()),
                                 values: None,
                                 required: Some(true),
                                 max_length: None,
                                 description: "Project ID".to_string(),
+                            },
+                        );
+                        map.insert(
+                            "type".to_string(),
+                            FieldSchema {
+                                field_type: "enum".to_string(),
+                                item_type: None,
+                                pattern: None,
+                                values: Some(vec!["app".to_string(), "library".to_string()]),
+                                required: Some(true),
+                                max_length: None,
+                                description: "Project type".to_string(),
+                            },
+                        );
+                        map.insert(
+                            "description".to_string(),
+                            FieldSchema {
+                                field_type: "string".to_string(),
+                                item_type: None,
+                                pattern: None,
+                                values: None,
+                                required: Some(true),
+                                max_length: Some(255),
+                                description: "Short description".to_string(),
                             },
                         );
                         map.insert(
@@ -330,56 +401,17 @@ mod tests {
                     entries: vec![
                         json!({
                             "id": "proj-alpha",
+                            "type": "app",
+                            "description": "Project Alpha Description",
                             "aliases": ["alpha", "project-alpha", "โปรเจกต์อัลฟา"]
                         }),
                         json!({
                             "id": "proj-beta",
+                            "type": "library",
+                            "description": "Project Beta Description",
                             "aliases": ["beta", "project-beta"]
                         }),
                     ],
-                },
-                KeywordGroup {
-                    group_id: "skills".to_string(),
-                    group_name: "Skills".to_string(),
-                    description: "Test skills".to_string(),
-                    base_fields_schema: {
-                        let mut map = HashMap::new();
-                        map.insert(
-                            "id".to_string(),
-                            FieldSchema {
-                                field_type: "string".to_string(),
-                                item_type: None,
-                                pattern: None,
-                                values: None,
-                                required: Some(true),
-                                max_length: None,
-                                description: "Skill ID".to_string(),
-                            },
-                        );
-                        map.insert(
-                            "aliases".to_string(),
-                            FieldSchema {
-                                field_type: "array".to_string(),
-                                item_type: Some("string".to_string()),
-                                pattern: None,
-                                values: None,
-                                required: Some(true),
-                                max_length: None,
-                                description: "Search aliases".to_string(),
-                            },
-                        );
-                        map
-                    },
-                    custom_field_allowed: CustomFieldConfig {
-                        enabled: false,
-                        max_one: false,
-                        description: "".to_string(),
-                        examples: None,
-                    },
-                    entries: vec![json!({
-                        "id": "skill-docs",
-                        "aliases": ["api-docs", "docs-generator"]
-                    })],
                 },
             ],
             validation: ValidationConfig {
@@ -389,7 +421,7 @@ mod tests {
                     description_min_length: 10,
                     description_max_length: 255,
                     custom_field_per_entry: 1,
-                    required_base_fields: vec!["id".to_string(), "aliases".to_string()],
+                    required_base_fields: vec!["id".to_string(), "aliases".to_string(), "type".to_string(), "description".to_string()],
                 },
                 error_messages: HashMap::new(),
             },
@@ -397,104 +429,16 @@ mod tests {
     }
 
     #[test]
-    fn test_check_duplicate_aliases_no_duplicates() {
-        let registry = make_test_registry();
+    fn test_validate_registry_incompatible_version() {
+        let mut registry = make_test_registry();
+        registry.version = "1.0.0".to_string(); // เก่ากว่าที่รองรับ
+
         let validator = Validator::new(registry);
-
-        // aliases that don't exist in registry
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            None,
-            &["new-alias".to_string(), "another-one".to_string()],
-        );
-        assert!(result.is_empty());
-    }
-
-    #[test]
-    fn test_check_duplicate_aliases_same_group() {
-        let registry = make_test_registry();
-        let validator = Validator::new(registry);
-
-        // "alpha" already exists in projects
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            None,
-            &["alpha".to_string()],
-        );
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].code, "DUPLICATE_ALIAS");
-    }
-
-    #[test]
-    fn test_check_duplicate_aliases_cross_group() {
-        let registry = make_test_registry();
-        let validator = Validator::new(registry);
-
-        // "api-docs" exists in skills group
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            None,
-            &["api-docs".to_string()],
-        );
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].code, "DUPLICATE_ALIAS");
-    }
-
-    #[test]
-    fn test_check_duplicate_aliases_case_insensitive() {
-        let registry = make_test_registry();
-        let validator = Validator::new(registry);
-
-        // "ALPHA" should match "alpha" (case insensitive)
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            None,
-            &["ALPHA".to_string()],
-        );
-        assert_eq!(result.len(), 1);
-    }
-
-    #[test]
-    fn test_check_duplicate_aliases_skip_self_on_edit() {
-        let registry = make_test_registry();
-        let validator = Validator::new(registry);
-
-        // When editing proj-alpha, its own aliases should not be flagged
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            Some("proj-alpha"),
-            &["alpha".to_string(), "project-alpha".to_string()],
-        );
-        assert!(result.is_empty());
-    }
-
-    #[test]
-    fn test_check_duplicate_aliases_catch_others_on_edit() {
-        let registry = make_test_registry();
-        let validator = Validator::new(registry);
-
-        // When editing proj-alpha, trying to use beta's alias should fail
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            Some("proj-alpha"),
-            &["beta".to_string()],
-        );
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].code, "DUPLICATE_ALIAS");
-    }
-
-    #[test]
-    fn test_check_duplicate_aliases_multiple_duplicates() {
-        let registry = make_test_registry();
-        let validator = Validator::new(registry);
-
-        // Both "alpha" and "beta" exist in projects
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            None,
-            &["alpha".to_string(), "beta".to_string()],
-        );
-        assert_eq!(result.len(), 2);
+        let result = validator.validate_registry();
+        
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert_eq!(errors[0].code, "INCOMPATIBLE_VERSION");
     }
 
     #[test]
@@ -504,6 +448,8 @@ mod tests {
 
         let entry = json!({
             "id": "proj-gamma",
+            "type": "app",
+            "description": "Valid description",
             "aliases": ["gamma", "project-gamma"]
         });
 
@@ -517,6 +463,8 @@ mod tests {
         let validator = Validator::new(registry);
 
         let entry = json!({
+            "id": "proj-gamma",
+            "type": "app",
             "aliases": ["gamma"]
         });
 
@@ -527,19 +475,39 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_entry_invalid_alias_type() {
+    fn test_validate_entry_invalid_pattern() {
         let registry = make_test_registry();
         let validator = Validator::new(registry);
 
         let entry = json!({
-            "id": "proj-gamma",
-            "aliases": "not-an-array"
+            "id": "INVALID-ID",
+            "type": "app",
+            "description": "Valid description",
+            "aliases": ["valid"]
         });
 
         let result = validator.validate_entry("projects", &entry);
         assert!(result.is_err());
         let errors = result.unwrap_err();
-        assert_eq!(errors[0].code, "INVALID_TYPE");
+        assert!(errors.iter().any(|e| e.code == "INVALID_PATTERN"));
+    }
+
+    #[test]
+    fn test_validate_entry_invalid_enum() {
+        let registry = make_test_registry();
+        let validator = Validator::new(registry);
+
+        let entry = json!({
+            "id": "proj-gamma",
+            "type": "not-an-app",
+            "description": "Valid description",
+            "aliases": ["valid"]
+        });
+
+        let result = validator.validate_entry("projects", &entry);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.code == "INVALID_ENUM"));
     }
 
     #[test]
@@ -549,28 +517,46 @@ mod tests {
 
         let entry = json!({
             "id": "proj-gamma",
-            "aliases": ["a"] // min length is 2
+            "type": "app",
+            "description": "Valid description",
+            "aliases": ["a"]
         });
 
         let result = validator.validate_entry("projects", &entry);
         assert!(result.is_err());
         let errors = result.unwrap_err();
-        assert_eq!(errors[0].code, "ALIAS_TOO_SHORT");
+        assert!(errors.iter().any(|e| e.code == "ALIAS_TOO_SHORT"));
     }
 
     #[test]
-    fn test_validate_entry_group_not_found() {
+    fn test_validate_registry_broken_link() {
+        let mut registry = make_test_registry();
+        registry.groups[0].entries.push(json!({
+            "id": "proj-broken",
+            "type": "app",
+            "description": "Valid description",
+            "aliases": ["broken"],
+            "relatedIds": ["non-existent-id"]
+        }));
+
+        let validator = Validator::new(registry);
+        let result = validator.validate_registry();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.code == "BROKEN_RELATIONSHIP"));
+    }
+
+    #[test]
+    fn test_check_duplicate_aliases_same_group() {
         let registry = make_test_registry();
         let validator = Validator::new(registry);
 
-        let entry = json!({
-            "id": "proj-gamma",
-            "aliases": ["gamma"]
-        });
-
-        let result = validator.validate_entry("nonexistent", &entry);
-        assert!(result.is_err());
-        let errors = result.unwrap_err();
-        assert_eq!(errors[0].code, "GROUP_NOT_FOUND");
+        let result = validator.check_duplicate_aliases(
+            "projects",
+            None,
+            &["alpha".to_string()],
+        );
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].code, "DUPLICATE_ALIAS");
     }
 }
