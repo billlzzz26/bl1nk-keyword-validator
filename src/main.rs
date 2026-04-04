@@ -339,7 +339,11 @@ fn cmd_edit(
         };
 
         entry[field] = parsed_value;
-        entry.get("id").and_then(|v| v.as_str()).unwrap_or(id).to_string()
+        entry
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(id)
+            .to_string()
     };
 
     // validate หลังแก้ไข (mutable borrow จบแล้ว)
