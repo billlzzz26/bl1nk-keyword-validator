@@ -271,8 +271,22 @@ impl Validator {
         }
 
         for group in &self.registry.groups {
+            let mut group_ids = std::collections::HashSet::new();
+
             for (_entry_idx, entry) in group.entries.iter().enumerate() {
                 if let Some(entry_id) = entry.get("id").and_then(|v| v.as_str()) {
+                    // 1. ตรวจสอบ ID ซ้ำภายในกลุ่ม (Namespace Isolation)
+                    if !group_ids.insert(entry_id.to_string()) {
+                        all_errors.push(ValidationError {
+                            code: "DUPLICATE_ID".to_string(),
+                            message: format!(
+                                "ID '{}' is duplicated within group namespace '{}'",
+                                entry_id, group.group_id
+                            ),
+                            field: Some("id".to_string()),
+                        });
+                    }
+
                     match self.validate_entry(&group.group_id, entry) {
                         Ok(_) => {}
                         Err(mut errors) => {
@@ -556,6 +570,25 @@ mod tests {
         assert!(result.is_err());
         let errors = result.unwrap_err();
         assert!(errors.iter().any(|e| e.code == "BROKEN_RELATIONSHIP"));
+    }
+
+    #[test]
+    fn test_validate_registry_duplicate_id_in_group() {
+        let mut registry = make_test_registry();
+        // เพิ่ม entry ที่มี ID ซ้ำในกลุ่มเดิม
+        registry.groups[0].entries.push(json!({
+            "id": "proj-alpha", // ซ้ำกับที่มีอยู่แล้วใน make_test_registry
+            "type": "app",
+            "description": "Duplicate ID entry",
+            "aliases": ["duplicate-id-test"]
+        }));
+
+        let validator = Validator::new(registry);
+        let result = validator.validate_registry();
+        
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.code == "DUPLICATE_ID"));
     }
 
     #[test]
