@@ -180,8 +180,7 @@ impl Validator {
                             } else {
                                 // validate each alias length
                                 let alias_str = item.as_str().unwrap();
-                                if alias_str.len()
-                                    < self.registry.validation.rules.alias_min_length
+                                if alias_str.len() < self.registry.validation.rules.alias_min_length
                                 {
                                     errors.push(ValidationError {
                                         code: "ALIAS_TOO_SHORT".to_string(),
@@ -192,8 +191,7 @@ impl Validator {
                                         ),
                                     });
                                 }
-                                if alias_str.len()
-                                    > self.registry.validation.rules.alias_max_length
+                                if alias_str.len() > self.registry.validation.rules.alias_max_length
                                 {
                                     errors.push(ValidationError {
                                         code: "ALIAS_TOO_LONG".to_string(),

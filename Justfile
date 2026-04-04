@@ -34,6 +34,21 @@ lint:
 clean:
     cargo clean
 
+# Deep clean: remove all gitignored files EXCEPT .env files
+clean-all:
+    cargo clean
+    rm -rf target/
+    rm -f Cargo.lock
+    rm -f **/*.rs.bk
+    rm -rf .idea/
+    rm -rf .vscode/
+    rm -f *.swp *.swo *~
+    rm -f .DS_Store
+    rm -f tarpaulin-report.html cobertura.xml
+    rm -f Thumbs.db .directory
+    rm -f *.o *.a *.so *.dylib *.dll *.exe
+    rm -f keyword-registry
+
 # Run the binary with arguments (example: just run search "AI")
 run *args:
     cargo run -- {{args}}
