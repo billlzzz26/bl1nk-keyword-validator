@@ -106,7 +106,14 @@ List {
 SchemaExport,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
+    if let Err(e) = run() {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     // schema-export ไม่ต้องโหลด registry ก่อน
@@ -117,8 +124,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // โหลด registry
-    let registry =
-        load_registry(&cli.schema).map_err(|e| format!("Failed to load schema: {}", e))?;
+    let registry = load_registry(&cli.schema).map_err(|e| match e {
+        bl1nk_keyword_core::ValidatorError::FileIo(msg) => msg,
+        bl1nk_keyword_core::ValidatorError::JsonError(err) => format!("Data format error: {}", err),
+        _ => format!("Registry error: {}", e),
+    })?;
 
     match cli.command {
         Commands::Validate { entry_id, group } => {

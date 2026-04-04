@@ -117,13 +117,25 @@ impl Validator {
                         if let Some(s) = field_value.as_str() {
                             // 1. ตรวจสอบ Regex Pattern
                             if let Some(pattern) = &field_schema.pattern {
-                                if let Ok(re) = Regex::new(pattern) {
-                                    if !re.is_match(s) {
+                                match Regex::new(pattern) {
+                                    Ok(re) => {
+                                        if !re.is_match(s) {
+                                            errors.push(ValidationError {
+                                                code: "INVALID_PATTERN".to_string(),
+                                                message: format!(
+                                                    "Field '{}' value '{}' does not match pattern '{}'",
+                                                    field_name, s, pattern
+                                                ),
+                                                field: Some(field_name.clone()),
+                                            });
+                                        }
+                                    }
+                                    Err(_) => {
                                         errors.push(ValidationError {
-                                            code: "INVALID_PATTERN".to_string(),
+                                            code: "INVALID_SCHEMA_PATTERN".to_string(),
                                             message: format!(
-                                                "Field '{}' value '{}' does not match pattern '{}'",
-                                                field_name, s, pattern
+                                                "Invalid regex pattern in schema for field '{}': {}",
+                                                field_name, pattern
                                             ),
                                             field: Some(field_name.clone()),
                                         });
