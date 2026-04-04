@@ -30,3 +30,6 @@ Thumbs.db
 *.dylib
 *.dll
 *.exe
+
+# Binary
+keyword-registry
