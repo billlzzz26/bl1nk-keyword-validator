@@ -1,0 +1,288 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "lastUpdated": "2026-04-04T00:00:00Z",
+    "description": "Unified keyword registry for bl1nk ecosystem",
+    "owner": "อาจารย์"
+  },
+  
+  "groups": [
+    {
+      "groupId": "projects",
+      "groupName": "โปรเจกต์",
+      "description": "bl1nk-prefixed repositories and products",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^bl1nk-[a-z0-9-]+$",
+          "required": true,
+          "description": "Unique project identifier"
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true,
+          "description": "Search keywords (en, th, variants)"
+        },
+        "type": {
+          "type": "enum",
+          "values": ["app", "library", "skill", "plugin", "tool", "template"],
+          "required": true,
+          "description": "Project category"
+        },
+        "status": {
+          "type": "enum",
+          "values": ["active", "archived", "planning", "maintenance"],
+          "required": true,
+          "description": "Current development status"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true,
+          "description": "Short description"
+        },
+        "tags": {
+          "type": "array",
+          "itemType": "string",
+          "required": false,
+          "description": "Categorization tags"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^https://github.com/",
+          "required": false,
+          "description": "GitHub repo URL"
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true,
+        "description": "1 custom field per project",
+        "examples": [
+          {
+            "fieldName": "primaryTech",
+            "type": "string",
+            "description": "Main technology stack"
+          },
+          {
+            "fieldName": "deploymentTarget",
+            "type": "enum",
+            "values": ["vercel", "modal", "github-actions", "local"]
+          }
+        ]
+      },
+      "entries": [
+        {
+          "id": "bl1nk-visual-story-extension",
+          "aliases": [
+            "visual-story",
+            "visual-story-extension",
+            "ภาพเรื่อง",
+            "story-extension"
+          ],
+          "type": "plugin",
+          "status": "active",
+          "description": "Workflow and context-linking architecture for story visualization",
+          "tags": ["gemini", "claude-code", "toml", "markdown"],
+          "repository": "https://github.com/dollawatt/bl1nk-visual-story-extension",
+          "primaryTech": "TypeScript, Next.js, Gemini CLI"
+        },
+        {
+          "id": "bl1nk-mintlify-docs-builder",
+          "aliases": [
+            "mintlify-docs",
+            "docs-builder",
+            "api-docs",
+            "เอกสารซ่อม"
+          ],
+          "type": "skill",
+          "status": "active",
+          "description": "Reusable skill for building Mintlify documentation",
+          "tags": ["documentation", "api-reference", "markdown"],
+          "repository": "https://github.com/dollawatt/bl1nk-mintlify-docs-builder"
+        }
+      ]
+    },
+
+    {
+      "groupId": "skills",
+      "groupName": "สกิล",
+      "description": "Reusable agent skills and workflows",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "Skill identifier (no bl1nk prefix)"
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true,
+          "description": "Search keywords (en, th, variants)"
+        },
+        "category": {
+          "type": "enum",
+          "values": [
+            "data-processing",
+            "code-generation",
+            "architecture",
+            "documentation",
+            "testing",
+            "deployment",
+            "analysis",
+            "automation"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        },
+        "framework": {
+          "type": "string",
+          "required": false,
+          "description": "Framework or tool (e.g., Modal, FastAPI, Next.js)"
+        },
+        "entryPoint": {
+          "type": "string",
+          "required": false,
+          "description": "File path or command to invoke"
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true,
+        "description": "1 custom field per skill",
+        "examples": [
+          {
+            "fieldName": "complexity",
+            "type": "enum",
+            "values": ["beginner", "intermediate", "advanced"]
+          },
+          {
+            "fieldName": "estimatedTime",
+            "type": "string",
+            "description": "e.g., '15 min', '1 hour'"
+          }
+        ]
+      },
+      "entries": [
+        {
+          "id": "write-api-reference",
+          "aliases": [
+            "api-docs",
+            "api-reference",
+            "เอกสาร-api"
+          ],
+          "category": "documentation",
+          "description": "Produces API reference documentation for Next.js APIs",
+          "framework": "Next.js",
+          "entryPoint": "/mnt/skills/user/write-api-reference/SKILL.md",
+          "complexity": "intermediate"
+        }
+      ]
+    },
+
+    {
+      "groupId": "keywords",
+      "groupName": "คีเวิร์ดทั่วไป",
+      "description": "General keywords, concepts, and terminology",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "Keyword identifier"
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true,
+          "description": "Search variants (en, th)"
+        },
+        "type": {
+          "type": "enum",
+          "values": [
+            "concept",
+            "technology",
+            "pattern",
+            "workflow",
+            "tool",
+            "methodology"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        },
+        "relatedIds": {
+          "type": "array",
+          "itemType": "string",
+          "required": false,
+          "description": "Links to related keywords/projects"
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true,
+        "description": "1 custom field per keyword",
+        "examples": [
+          {
+            "fieldName": "exampleUrl",
+            "type": "string",
+            "description": "Reference documentation link"
+          }
+        ]
+      },
+      "entries": [
+        {
+          "id": "mcp-server",
+          "aliases": [
+            "mcp",
+            "model-context-protocol",
+            "mcp-integration"
+          ],
+          "type": "concept",
+          "description": "Protocol for connecting AI models to external tools and services",
+          "relatedIds": [
+            "bl1nk-agent-skills-kb",
+            "tauri2-mcp-client-builder"
+          ]
+        }
+      ]
+    }
+  ],
+
+  "validation": {
+    "rules": {
+      "aliasMinLength": 2,
+      "aliasMaxLength": 50,
+      "descriptionMinLength": 10,
+      "descriptionMaxLength": 255,
+      "customFieldPerEntry": 1,
+      "requiredBaseFields": [
+        "id",
+        "aliases",
+        "type",
+        "description"
+      ]
+    },
+    "errorMessages": {
+      "INVALID_ID": "ID must match pattern for group type",
+      "DUPLICATE_ID": "ID already exists in this group",
+      "ALIAS_TOO_SHORT": "Alias must be at least 2 characters",
+      "ALIAS_TOO_LONG": "Alias must not exceed 50 characters",
+      "MISSING_REQUIRED_FIELD": "Required field missing: {field}",
+      "INVALID_ENUM": "Value must be one of: {values}",
+      "CUSTOM_FIELD_MISMATCH": "Custom field type does not match schema definition",
+      "DESCRIPTION_TOO_LONG": "Description exceeds 255 characters",
+      "DUPLICATE_ALIAS": "This alias is already used in group: {group}",
+      "INVALID_TYPE": "Field type mismatch. Expected {type}, got {actual}"
+    }
+  }
+}
