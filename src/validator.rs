@@ -1,7 +1,7 @@
 use crate::error::ValidationError;
 use crate::schema::{FieldSchema, KeywordRegistry};
 use regex::Regex;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashSet;
 
 /// หลักการ validate entry ตามโครงสร้าง schema
@@ -170,44 +170,41 @@ impl Validator {
                 // ตรวจ array items
                 if let Some(item_type) = &schema.item_type {
                     for (idx, item) in value.as_array().unwrap().iter().enumerate() {
-                        match item_type.as_str() {
-                            "string" => {
-                                if !item.is_string() {
+                        if item_type.as_str() == "string" {
+                            if !item.is_string() {
+                                errors.push(ValidationError {
+                                    code: "INVALID_ARRAY_ITEM".to_string(),
+                                    field: Some(format!("{}[{}]", field_name, idx)),
+                                    message: "Array item must be string".to_string(),
+                                });
+                            } else {
+                                // validate each alias length
+                                let alias_str = item.as_str().unwrap();
+                                if alias_str.len()
+                                    < self.registry.validation.rules.alias_min_length
+                                {
                                     errors.push(ValidationError {
-                                        code: "INVALID_ARRAY_ITEM".to_string(),
+                                        code: "ALIAS_TOO_SHORT".to_string(),
                                         field: Some(format!("{}[{}]", field_name, idx)),
-                                        message: "Array item must be string".to_string(),
+                                        message: format!(
+                                            "Alias must be at least {} characters",
+                                            self.registry.validation.rules.alias_min_length
+                                        ),
                                     });
-                                } else {
-                                    // validate each alias length
-                                    let alias_str = item.as_str().unwrap();
-                                    if alias_str.len()
-                                        < self.registry.validation.rules.alias_min_length
-                                    {
-                                        errors.push(ValidationError {
-                                            code: "ALIAS_TOO_SHORT".to_string(),
-                                            field: Some(format!("{}[{}]", field_name, idx)),
-                                            message: format!(
-                                                "Alias must be at least {} characters",
-                                                self.registry.validation.rules.alias_min_length
-                                            ),
-                                        });
-                                    }
-                                    if alias_str.len()
-                                        > self.registry.validation.rules.alias_max_length
-                                    {
-                                        errors.push(ValidationError {
-                                            code: "ALIAS_TOO_LONG".to_string(),
-                                            field: Some(format!("{}[{}]", field_name, idx)),
-                                            message: format!(
-                                                "Alias must not exceed {} characters",
-                                                self.registry.validation.rules.alias_max_length
-                                            ),
-                                        });
-                                    }
+                                }
+                                if alias_str.len()
+                                    > self.registry.validation.rules.alias_max_length
+                                {
+                                    errors.push(ValidationError {
+                                        code: "ALIAS_TOO_LONG".to_string(),
+                                        field: Some(format!("{}[{}]", field_name, idx)),
+                                        message: format!(
+                                            "Alias must not exceed {} characters",
+                                            self.registry.validation.rules.alias_max_length
+                                        ),
+                                    });
                                 }
                             }
-                            _ => {}
                         }
                     }
                 }

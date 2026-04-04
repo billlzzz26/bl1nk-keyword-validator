@@ -25,7 +25,7 @@ pub fn save_registry<P: AsRef<Path>>(
     path: P,
     registry: &KeywordRegistry,
 ) -> Result<(), ValidatorError> {
-    let json = serde_json::to_string_pretty(registry).map_err(|e| ValidatorError::JsonError(e))?;
+    let json = serde_json::to_string_pretty(registry).map_err(ValidatorError::JsonError)?;
 
     fs::write(path, json)
         .map_err(|e| ValidatorError::FileIo(format!("Failed to write file: {}", e)))?;

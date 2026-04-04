@@ -1,5 +1,4 @@
 use crate::schema::{KeywordRegistry, SearchResult};
-use serde_json::Value;
 
 /// ค้นหา keyword จาก aliases ในทั้ง registry
 pub struct KeywordSearch {
