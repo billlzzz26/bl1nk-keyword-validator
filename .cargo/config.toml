@@ -1,2 +1,3 @@
-[build]
-target-dir = "/data/data/com.termux/files/home/tmp/cargo-targets"
+# Note: On Termux/Android, set CARGO_TARGET_DIR to avoid external storage:
+#   export CARGO_TARGET_DIR=/data/data/com.termux/files/home/tmp/cargo-targets
+# Or use: just build / just test
