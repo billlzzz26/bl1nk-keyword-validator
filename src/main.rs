@@ -251,8 +251,7 @@ fn cmd_add(
     let mut reg = registry.clone();
 
     // parse entry JSON
-    let entry: Value = if entry_str.starts_with('@') {
-        let file_path = &entry_str[1..];
+    let entry: Value = if let Some(file_path) = entry_str.strip_prefix('@') {
         let content = std::fs::read_to_string(file_path)?;
         serde_json::from_str(&content)?
     } else {
