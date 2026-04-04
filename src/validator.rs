@@ -64,15 +64,16 @@ impl Validator {
                 }
             }
 
-            let max_allowed = if group.custom_field_allowed.max_one { 1 } else { 100 }; // fallback to a large number if not max_one
+            let max_allowed = if group.custom_field_allowed.max_one {
+                1
+            } else {
+                100
+            }; // fallback to a large number if not max_one
             if custom_fields > max_allowed {
                 errors.push(ValidationError {
                     code: "TOO_MANY_CUSTOM_FIELDS".to_string(),
                     field: None,
-                    message: format!(
-                        "Maximum {} custom field allowed",
-                        max_allowed
-                    ),
+                    message: format!("Maximum {} custom field allowed", max_allowed),
                 });
             }
         }
@@ -135,10 +136,7 @@ impl Validator {
                             errors.push(ValidationError {
                                 code: "INVALID_PATTERN".to_string(),
                                 field: Some(field_name.to_string()),
-                                message: format!(
-                                    "Value must match pattern: {}",
-                                    pattern
-                                ),
+                                message: format!("Value must match pattern: {}", pattern),
                             });
                         }
                     }
@@ -183,7 +181,9 @@ impl Validator {
                                 } else {
                                     // validate each alias length
                                     let alias_str = item.as_str().unwrap();
-                                    if alias_str.len() < self.registry.validation.rules.alias_min_length {
+                                    if alias_str.len()
+                                        < self.registry.validation.rules.alias_min_length
+                                    {
                                         errors.push(ValidationError {
                                             code: "ALIAS_TOO_SHORT".to_string(),
                                             field: Some(format!("{}[{}]", field_name, idx)),
@@ -193,7 +193,9 @@ impl Validator {
                                             ),
                                         });
                                     }
-                                    if alias_str.len() > self.registry.validation.rules.alias_max_length {
+                                    if alias_str.len()
+                                        > self.registry.validation.rules.alias_max_length
+                                    {
                                         errors.push(ValidationError {
                                             code: "ALIAS_TOO_LONG".to_string(),
                                             field: Some(format!("{}[{}]", field_name, idx)),
@@ -218,10 +220,7 @@ impl Validator {
                         errors.push(ValidationError {
                             code: "INVALID_ENUM".to_string(),
                             field: Some(field_name.to_string()),
-                            message: format!(
-                                "Value must be one of: {}",
-                                allowed_values.join(", ")
-                            ),
+                            message: format!("Value must be one of: {}", allowed_values.join(", ")),
                         });
                     }
                 }
@@ -244,7 +243,11 @@ impl Validator {
     }
 
     /// check duplicate aliases ในทั้ง registry
-    pub fn check_duplicate_aliases(&self, _group_id: &str, aliases: &[String]) -> Vec<ValidationError> {
+    pub fn check_duplicate_aliases(
+        &self,
+        _group_id: &str,
+        aliases: &[String],
+    ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
         let mut seen_aliases = HashSet::new();
 

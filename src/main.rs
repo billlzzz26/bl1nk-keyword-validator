@@ -104,8 +104,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     // โหลด registry
-    let registry = load_registry(&cli.schema)
-        .map_err(|e| format!("Failed to load schema: {}", e))?;
+    let registry =
+        load_registry(&cli.schema).map_err(|e| format!("Failed to load schema: {}", e))?;
 
     match cli.command {
         Commands::Validate { entry_id, group } => {
@@ -196,7 +196,10 @@ fn cmd_validate(
         }
 
         if all_valid {
-            println!("{}", json!({ "valid": true, "message": "All entries are valid" }));
+            println!(
+                "{}",
+                json!({ "valid": true, "message": "All entries are valid" })
+            );
         } else {
             std::process::exit(1);
         }
@@ -373,7 +376,10 @@ fn cmd_show(
                 if json_output {
                     println!("{}", serde_json::to_string_pretty(entry)?);
                 } else {
-                    println!("ID: {}", entry.get("id").and_then(|v| v.as_str()).unwrap_or(""));
+                    println!(
+                        "ID: {}",
+                        entry.get("id").and_then(|v| v.as_str()).unwrap_or("")
+                    );
                     println!("Group: {}", group.group_id);
                     if let Some(aliases) = entry.get("aliases").and_then(|v| v.as_array()) {
                         println!(

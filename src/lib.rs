@@ -13,9 +13,8 @@ use std::path::Path;
 
 /// โหลด schema จากไฟล์ JSON
 pub fn load_registry<P: AsRef<Path>>(path: P) -> Result<KeywordRegistry, ValidatorError> {
-    let content = fs::read_to_string(path).map_err(|e| {
-        ValidatorError::FileIo(format!("Failed to read file: {}", e))
-    })?;
+    let content = fs::read_to_string(path)
+        .map_err(|e| ValidatorError::FileIo(format!("Failed to read file: {}", e)))?;
 
     let registry: KeywordRegistry = serde_json::from_str(&content)?;
     Ok(registry)
@@ -26,13 +25,10 @@ pub fn save_registry<P: AsRef<Path>>(
     path: P,
     registry: &KeywordRegistry,
 ) -> Result<(), ValidatorError> {
-    let json = serde_json::to_string_pretty(registry).map_err(|e| {
-        ValidatorError::JsonError(e)
-    })?;
+    let json = serde_json::to_string_pretty(registry).map_err(|e| ValidatorError::JsonError(e))?;
 
-    fs::write(path, json).map_err(|e| {
-        ValidatorError::FileIo(format!("Failed to write file: {}", e))
-    })?;
+    fs::write(path, json)
+        .map_err(|e| ValidatorError::FileIo(format!("Failed to write file: {}", e)))?;
 
     Ok(())
 }
