@@ -1,0 +1,27 @@
+name: Registry Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.json'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.json'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Build CLI
+      run: cargo build -p bl1nk-keyword-cli --release
+
+    - name: Validate Registry
+      run: |
+        ./target/release/keyword-registry -s keyword-registry-schema.json validate

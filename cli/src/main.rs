@@ -91,19 +91,27 @@ enum Commands {
         #[arg(short, long)]
         json: bool,
     },
-/// List all entries in a group
-List {
-    /// Group ID
-    #[arg(value_name = "GROUP")]
-    group: String,
 
-    /// Return raw JSON output
-    #[arg(short, long)]
-    json: bool,
-},
+    /// List all entries in a group
+    List {
+        /// Group ID
+        #[arg(value_name = "GROUP")]
+        group: String,
 
-/// Export JSON Schema for the registry
-SchemaExport,
+        /// Return raw JSON output
+        #[arg(short, long)]
+        json: bool,
+    },
+
+    /// Export JSON Schema for the registry
+    SchemaExport,
+
+    /// Generate Markdown documentation from the registry
+    DocsGen {
+        /// Output file path (default: stdout)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 fn main() {
@@ -160,6 +168,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             cmd_list(&registry, &group, json)?;
         }
 
+        Commands::DocsGen { output } => {
+            cmd_docs_gen(&registry, output)?;
+        }
+
         Commands::SchemaExport => unreachable!(),
     }
 
@@ -174,59 +186,45 @@ fn cmd_validate(
     let validator = Validator::new(registry.clone());
 
     if let Some(id) = entry_id {
-        let group_id = group.ok_or("Group ID required when validating single entry")?;
-
-        let target_group = registry
+        // validate single entry
+        let g_id = group.ok_or("Group ID is required for single entry validation")?;
+        let group_data = registry
             .groups
             .iter()
-            .find(|g| g.group_id == group_id)
-            .ok_or("Group not found")?;
+            .find(|g| g.group_id == g_id)
+            .ok_or(format!("Group '{}' not found", g_id))?;
 
-        let entry = target_group
+        let entry = group_data
             .entries
             .iter()
             .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(&id))
-            .ok_or("Entry not found")?;
+            .ok_or(format!("Entry '{}' not found in group '{}'", id, g_id))?;
 
-        match validator.validate_entry(&group_id, entry) {
+        match validator.validate_entry(&g_id, entry) {
             Ok(_) => {
-                println!("{}", json!({ "valid": true, "message": "Entry is valid" }));
+                println!(
+                    "{}",
+                    json!({ "valid": true, "message": format!("Entry '{}' is valid", id) })
+                );
             }
             Err(errors) => {
-                let response = json!({
-                    "valid": false,
-                    "errors": errors
-                });
-                println!("{}", response);
+                println!("{}", json!({ "valid": false, "errors": errors }));
                 std::process::exit(1);
             }
         }
     } else {
-        // validate ทั้งหมด
-        let mut all_valid = true;
-
-        for group in &registry.groups {
-            for entry in &group.entries {
-                if let Err(errors) = validator.validate_entry(&group.group_id, entry) {
-                    all_valid = false;
-                    let response = json!({
-                        "valid": false,
-                        "entry": entry.get("id"),
-                        "group": group.group_id,
-                        "errors": errors
-                    });
-                    println!("{}", response);
-                }
+        // validate entire registry
+        match validator.validate_registry() {
+            Ok(_) => {
+                println!(
+                    "{}",
+                    json!({ "valid": true, "message": "All entries are valid" })
+                );
             }
-        }
-
-        if all_valid {
-            println!(
-                "{}",
-                json!({ "valid": true, "message": "All entries are valid" })
-            );
-        } else {
-            std::process::exit(1);
+            Err(errors) => {
+                println!("{}", json!({ "valid": false, "errors": errors }));
+                std::process::exit(1);
+            }
         }
     }
 
@@ -274,74 +272,57 @@ fn cmd_add(
     group: &str,
     entry_str: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut reg = registry.clone();
-
-    // parse entry JSON
-    let entry: Value = if let Some(file_path) = entry_str.strip_prefix('@') {
-        let content = std::fs::read_to_string(file_path)?;
+    let mut registry = registry.clone();
+    let mut new_entry: Value = if entry_str.starts_with('@') {
+        let path = &entry_str[1..];
+        let content = std::fs::read_to_string(path)?;
         serde_json::from_str(&content)?
     } else {
         serde_json::from_str(entry_str)?
     };
 
-    let validator = Validator::new(reg.clone());
+    let validator = Validator::new(registry.clone());
 
-    // validate entry
-    if let Err(errors) = validator.validate_entry(group, &entry) {
-        let response = json!({
-            "valid": false,
-            "errors": errors
-        });
-        println!("{}", response);
-        std::process::exit(1);
-    }
+    // 1. ตรวจสอบความถูกต้องของ entry
+    validator.validate_entry(group, &new_entry).map_err(|e| {
+        format!(
+            "Validation failed: {}",
+            serde_json::to_string_pretty(&e).unwrap()
+        )
+    })?;
 
-    // check duplicate aliases
-    if let Some(aliases_arr) = entry.get("aliases").and_then(|v| v.as_array()) {
-        let aliases: Vec<String> = aliases_arr
+    // 2. ตรวจสอบ duplicate aliases
+    if let Some(aliases) = new_entry.get("aliases").and_then(|v| v.as_array()) {
+        let alias_strings: Vec<String> = aliases
             .iter()
             .filter_map(|a| a.as_str().map(String::from))
             .collect();
 
-        if !aliases.is_empty() {
-            let alias_errors = validator.check_duplicate_aliases(group, None, &aliases);
-            if !alias_errors.is_empty() {
-                let response = json!({
-                    "valid": false,
-                    "errors": alias_errors
-                });
-                println!("{}", response);
-                std::process::exit(1);
-            }
+        let dup_errors = validator.check_duplicate_aliases(group, None, &alias_strings);
+        if !dup_errors.is_empty() {
+            return Err(format!(
+                "Duplicate aliases found: {}",
+                serde_json::to_string_pretty(&dup_errors).unwrap()
+            )
+            .into());
         }
     }
 
-    // add เข้า registry
-    if let Some(target_group) = reg.groups.iter_mut().find(|g| g.group_id == group) {
-        let entry_id = entry
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown");
+    // 3. เพิ่มเข้า registry
+    let group_data = registry
+        .groups
+        .iter_mut()
+        .find(|g| g.group_id == group)
+        .ok_or(format!("Group '{}' not found", group))?;
 
-        target_group.entries.push(entry.clone());
+    group_data.entries.push(new_entry);
 
-        save_registry(schema_path, &reg)?;
-
-        let response = json!({
-            "success": true,
-            "groupId": group,
-            "id": entry_id,
-            "message": "Entry added successfully"
-        });
-        println!("{}", response);
-    } else {
-        let response = json!({
-            "valid": false,
-            "error": "Group not found"
-        });
-        println!("{}", response);
-        std::process::exit(1);
-    }
+    // 4. บันทึกไฟล์
+    save_registry(schema_path, &registry)?;
+    println!(
+        "{}",
+        json!({ "valid": true, "message": "Entry added successfully" })
+    );
 
     Ok(())
 }
@@ -354,99 +335,62 @@ fn cmd_edit(
     field: &str,
     value: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut reg = registry.clone();
+    let mut registry = registry.clone();
+    let validator = Validator::new(registry.clone());
 
-    // หา entry และแก้ไขค่า
-    let entry_id = {
-        let target_group = reg
-            .groups
-            .iter_mut()
-            .find(|g| g.group_id == group)
-            .ok_or("Group not found")?;
+    let group_data = registry
+        .groups
+        .iter_mut()
+        .find(|g| g.group_id == group)
+        .ok_or(format!("Group '{}' not found", group))?;
 
-        let entry = target_group
-            .entries
-            .iter_mut()
-            .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(id))
-            .ok_or("Entry not found")?;
+    let entry = group_data
+        .entries
+        .iter_mut()
+        .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(id))
+        .ok_or(format!("Entry '{}' not found in group '{}'", id, group))?;
 
-        // parse value ตามประเภท
-        let parsed_value: Value = if value == "true" {
-            Value::Bool(true)
-        } else if value == "false" {
-            Value::Bool(false)
-        } else if let Ok(num) = value.parse::<i64>() {
-            Value::Number(num.into())
-        } else if value.starts_with('[') || value.starts_with('{') {
-            serde_json::from_str(value)?
-        } else {
-            Value::String(value.to_string())
-        };
-
-        entry[field] = parsed_value;
-        entry
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or(id)
-            .to_string()
+    // อัปเดตค่า (จัดการประเภทข้อมูลเบื้องต้น)
+    let new_val: Value = if value.starts_with('[') || value.starts_with('{') {
+        serde_json::from_str(value)?
+    } else {
+        Value::String(value.to_string())
     };
 
-    // validate หลังแก้ไข (mutable borrow จบแล้ว)
-    let target_group = reg
-        .groups
-        .iter()
-        .find(|g| g.group_id == group)
-        .ok_or("Group not found")?;
+    entry[field] = new_val;
 
-    let entry = target_group
-        .entries
-        .iter()
-        .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(&entry_id))
-        .ok_or("Entry not found")?;
+    // ตรวจสอบความถูกต้องหลังแก้ไข
+    validator.validate_entry(group, entry).map_err(|e| {
+        format!(
+            "Validation failed after edit: {}",
+            serde_json::to_string_pretty(&e).unwrap()
+        )
+    })?;
 
-    let validator = Validator::new(reg.clone());
-    if let Err(errors) = validator.validate_entry(group, entry) {
-        let response = json!({
-            "valid": false,
-            "errors": errors
-        });
-        println!("{}", response);
-        std::process::exit(1);
-    }
-
-    // check duplicate aliases (เฉพาะตอนแก้ field aliases)
+    // ตรวจสอบ duplicate aliases (ถ้าแก้ไข aliases)
     if field == "aliases" {
-        if let Some(aliases_arr) = entry.get("aliases").and_then(|v| v.as_array()) {
-            let aliases: Vec<String> = aliases_arr
+        if let Some(aliases) = entry.get("aliases").and_then(|v| v.as_array()) {
+            let alias_strings: Vec<String> = aliases
                 .iter()
                 .filter_map(|a| a.as_str().map(String::from))
                 .collect();
 
-            if !aliases.is_empty() {
-                let alias_errors =
-                    validator.check_duplicate_aliases(group, Some(&entry_id), &aliases);
-                if !alias_errors.is_empty() {
-                    let response = json!({
-                        "valid": false,
-                        "errors": alias_errors
-                    });
-                    println!("{}", response);
-                    std::process::exit(1);
-                }
+            let dup_errors = validator.check_duplicate_aliases(group, Some(id), &alias_strings);
+            if !dup_errors.is_empty() {
+                return Err(format!(
+                    "Duplicate aliases found after edit: {}",
+                    serde_json::to_string_pretty(&dup_errors).unwrap()
+                )
+                .into());
             }
         }
     }
 
-    save_registry(schema_path, &reg)?;
-
-    let response = json!({
-        "success": true,
-        "groupId": group,
-        "id": id,
-        "field": field,
-        "message": "Entry updated successfully"
-    });
-    println!("{}", response);
+    save_registry(schema_path, &registry)?;
+    println!(
+        "{}",
+        json!({ "valid": true, "message": "Entry updated successfully" })
+    );
 
     Ok(())
 }
@@ -456,88 +400,67 @@ fn cmd_show(
     id: &str,
     json_output: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut found = false;
-
     for group in &registry.groups {
-        for entry in &group.entries {
-            if entry.get("id").and_then(|v| v.as_str()) == Some(id) {
-                if json_output {
-                    println!("{}", serde_json::to_string_pretty(entry)?);
-                } else {
-                    println!(
-                        "ID: {}",
-                        entry.get("id").and_then(|v| v.as_str()).unwrap_or("")
-                    );
-                    println!("Group: {}", group.group_id);
-                    if let Some(aliases) = entry.get("aliases").and_then(|v| v.as_array()) {
-                        println!(
-                            "Aliases: {}",
-                            aliases
-                                .iter()
-                                .filter_map(|a| a.as_str())
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        );
-                    }
-                    if let Some(desc) = entry.get("description").and_then(|v| v.as_str()) {
-                        println!("Description: {}", desc);
-                    }
-                    println!("\nFull entry:");
-                    println!("{}", serde_json::to_string_pretty(entry)?);
-                }
-                found = true;
-                break;
+        if let Some(entry) = group
+            .entries
+            .iter()
+            .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(id))
+        {
+            if json_output {
+                println!("{}", serde_json::to_string_pretty(entry)?);
+            } else {
+                println!("Entry Details:");
+                println!("ID: {}", id);
+                println!("Group: {}", group.group_id);
+                println!("{:#}", entry);
             }
-        }
-        if found {
-            break;
+            return Ok(());
         }
     }
 
-    if !found {
-        eprintln!("Entry not found: {}", id);
-        std::process::exit(1);
+    Err(format!("Entry '{}' not found in any group", id).into())
+}
+
+fn cmd_list(
+    registry: &bl1nk_keyword_core::KeywordRegistry,
+    group_id: &str,
+    json_output: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let group = registry
+        .groups
+        .iter()
+        .find(|g| g.group_id == group_id)
+        .ok_or(format!("Group '{}' not found", group_id))?;
+
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&group.entries)?);
+    } else {
+        println!("Entries in group '{}':\n", group_id);
+        for entry in &group.entries {
+            if let Some(id) = entry.get("id").and_then(|v| v.as_str()) {
+                if let Some(desc) = entry.get("description").and_then(|v| v.as_str()) {
+                    println!("- {}: {}", id, desc);
+                }
+            }
+        }
     }
 
     Ok(())
 }
 
-fn cmd_list(
+fn cmd_docs_gen(
     registry: &bl1nk_keyword_core::KeywordRegistry,
-    group: &str,
-    json_output: bool,
+    output: Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let target_group = registry
-        .groups
-        .iter()
-        .find(|g| g.group_id == group)
-        .ok_or("Group not found")?;
+    let markdown = bl1nk_keyword_core::generate_markdown(registry);
 
-    if json_output {
-        let ids: Vec<&str> = target_group
-            .entries
-            .iter()
-            .filter_map(|e| e.get("id").and_then(|v| v.as_str()))
-            .collect();
-
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&json!({
-                "group": group,
-                "count": ids.len(),
-                "entries": ids
-            }))?
-        );
-    } else {
-        println!("Group: {} ({})", group, target_group.group_name);
-        println!("Entries: {}\n", target_group.entries.len());
-
-        for entry in &target_group.entries {
-            if let Some(id) = entry.get("id").and_then(|v| v.as_str()) {
-                if let Some(desc) = entry.get("description").and_then(|v| v.as_str()) {
-                    println!("  - {}: {}", id, desc);
-                }
-            }
+    match output {
+        Some(path) => {
+            std::fs::write(&path, markdown)?;
+            println!("Documentation generated at: {}", path.display());
+        }
+        None => {
+            println!("{}", markdown);
         }
     }
 
