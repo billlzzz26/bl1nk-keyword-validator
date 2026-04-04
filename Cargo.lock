@@ -62,10 +62,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "bl1nk-keyword-validator"
-version = "0.1.0"
+name = "bl1nk-keyword-cli"
+version = "1.1.0"
 dependencies = [
+ "bl1nk-keyword-core",
  "clap",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "bl1nk-keyword-core"
+version = "1.1.0"
+dependencies = [
  "regex",
  "serde",
  "serde_json",

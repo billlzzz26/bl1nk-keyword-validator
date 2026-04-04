@@ -1,20 +1,9 @@
-[package]
-name = "bl1nk-keyword-validator"
-version = "0.1.0"
-edition = "2021"
-authors = ["อาจารย์"]
-description = "Validation and search tool for bl1nk keyword registry"
-
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-clap = { version = "4.5", features = ["derive"] }
-regex = "1.10"
-thiserror = "1.0"
-
-[[bin]]
-name = "keyword-registry"
-path = "src/main.rs"
+[workspace]
+members = [
+    "core",
+    "cli",
+]
+resolver = "2"
 
 [profile.release]
 opt-level = 3

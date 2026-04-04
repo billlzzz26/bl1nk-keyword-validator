@@ -3,13 +3,14 @@ pub mod schema;
 pub mod search;
 pub mod validator;
 
-pub use error::{ValidationError, ValidationResponse, ValidatorError};
-pub use schema::*;
-pub use search::KeywordSearch;
-pub use validator::Validator;
-
 use std::fs;
 use std::path::Path;
+
+// Re-export commonly used types
+pub use schema::{KeywordRegistry, KeywordGroup, SearchResult};
+pub use validator::Validator;
+pub use search::KeywordSearch;
+pub use error::{ValidatorError, ValidationError};
 
 /// โหลด schema จากไฟล์ JSON
 pub fn load_registry<P: AsRef<Path>>(path: P) -> Result<KeywordRegistry, ValidatorError> {

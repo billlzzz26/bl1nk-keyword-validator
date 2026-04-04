@@ -89,7 +89,7 @@ keyword-registry list skills --json
 ### Library Usage
 
 ```rust
-use bl1nk_keyword_validator::{load_registry, KeywordSearch, Validator};
+use bl1nk_keyword_core::{load_registry, KeywordSearch, Validator};
 
 // Load registry
 let registry = load_registry("keyword-registry.json")?;
@@ -100,14 +100,14 @@ let results = search.search("visual-story");
 
 // Validate
 let validator = Validator::new(registry);
-validator.validate_entry("projects", &entry)?;
+validator.validate_registry()?;
 ```
 
 ## Schema Structure
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "metadata": { ... },
   "groups": [
     {
@@ -240,16 +240,24 @@ cargo fmt
 
 ```
 bl1nk-keyword-validator/
-├── Cargo.toml           # Project config
-├── src/
-│   ├── main.rs          # CLI entry point
-│   ├── lib.rs           # Library interface
-│   ├── error.rs         # Error types
-│   ├── schema.rs        # Type definitions
-│   ├── validator.rs     # Validation logic
-│   └── search.rs        # Search functionality
+├── Cargo.toml           # Workspace root
+├── core/                # Core logic crate
+│   ├── Cargo.toml
+│   └── src/
+│       ├── lib.rs       # Main entry & persistence
+│       ├── schema.rs    # Data models
+│       ├── validator.rs # Logic for validation
+│       ├── search.rs    # Logic for searching
+│       └── error.rs     # Error definitions
+├── cli/                 # CLI interface crate
+│   ├── Cargo.toml
+│   └── src/
+│       └── main.rs      # CLI implementation
+├── scripts/             # Utility scripts
+│   └── bump-version.sh  # Version management
 ├── README.md
-└── .gitignore
+├── SPEC.md
+└── Justfile
 ```
 
 ## Exit Codes

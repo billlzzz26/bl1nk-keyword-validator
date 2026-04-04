@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-04-04
 
 ### Added
+- **Cargo Workspace Architecture**: Refactored the project into a multi-crate workspace (`core` and `cli`) for better modularity and AI context efficiency.
 - **Strategic Roadmap**: Established `SPEC.md` as the "Knowledge Backbone" roadmap for the bl1nk ecosystem.
 - **Group-Scoped Namespacing**: Implemented logic to treat groups as namespaces for better keyword organization.
 - **Broken Link Validation**: New validator check to ensure all `relatedIds` link to existing entries (`BROKEN_RELATIONSHIP`).

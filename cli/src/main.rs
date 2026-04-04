@@ -1,4 +1,4 @@
-use bl1nk_keyword_validator::{load_registry, save_registry, KeywordSearch, Validator};
+use bl1nk_keyword_core::{load_registry, save_registry, KeywordSearch, Validator};
 use clap::{Parser, Subcommand};
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(
     name = "keyword-registry",
-    version = "0.1.0",
+    version = "1.1.0",
     about = "Validation and search tool for bl1nk keyword registry"
 )]
 struct Cli {
@@ -142,7 +142,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn cmd_validate(
-    registry: &bl1nk_keyword_validator::KeywordRegistry,
+    registry: &bl1nk_keyword_core::KeywordRegistry,
     entry_id: Option<String>,
     group: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -209,7 +209,7 @@ fn cmd_validate(
 }
 
 fn cmd_search(
-    registry: &bl1nk_keyword_validator::KeywordRegistry,
+    registry: &bl1nk_keyword_core::KeywordRegistry,
     query: &str,
     json_output: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -243,7 +243,7 @@ fn cmd_search(
 }
 
 fn cmd_add(
-    registry: &bl1nk_keyword_validator::KeywordRegistry,
+    registry: &bl1nk_keyword_core::KeywordRegistry,
     schema_path: &std::path::PathBuf,
     group: &str,
     entry_str: &str,
@@ -321,7 +321,7 @@ fn cmd_add(
 }
 
 fn cmd_edit(
-    registry: &bl1nk_keyword_validator::KeywordRegistry,
+    registry: &bl1nk_keyword_core::KeywordRegistry,
     schema_path: &std::path::PathBuf,
     id: &str,
     group: &str,
@@ -426,7 +426,7 @@ fn cmd_edit(
 }
 
 fn cmd_show(
-    registry: &bl1nk_keyword_validator::KeywordRegistry,
+    registry: &bl1nk_keyword_core::KeywordRegistry,
     id: &str,
     json_output: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -477,7 +477,7 @@ fn cmd_show(
 }
 
 fn cmd_list(
-    registry: &bl1nk_keyword_validator::KeywordRegistry,
+    registry: &bl1nk_keyword_core::KeywordRegistry,
     group: &str,
     json_output: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
