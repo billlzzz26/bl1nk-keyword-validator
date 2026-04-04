@@ -311,34 +311,50 @@ fn cmd_edit(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut reg = registry.clone();
 
+    // หา entry และแก้ไขค่า
+    let entry_id = {
+        let target_group = reg
+            .groups
+            .iter_mut()
+            .find(|g| g.group_id == group)
+            .ok_or("Group not found")?;
+
+        let entry = target_group
+            .entries
+            .iter_mut()
+            .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(id))
+            .ok_or("Entry not found")?;
+
+        // parse value ตามประเภท
+        let parsed_value: Value = if value == "true" {
+            Value::Bool(true)
+        } else if value == "false" {
+            Value::Bool(false)
+        } else if let Ok(num) = value.parse::<i64>() {
+            Value::Number(num.into())
+        } else if value.starts_with('[') || value.starts_with('{') {
+            serde_json::from_str(value)?
+        } else {
+            Value::String(value.to_string())
+        };
+
+        entry[field] = parsed_value;
+        entry.get("id").and_then(|v| v.as_str()).unwrap_or(id).to_string()
+    };
+
+    // validate หลังแก้ไข (mutable borrow จบแล้ว)
     let target_group = reg
         .groups
-        .iter_mut()
+        .iter()
         .find(|g| g.group_id == group)
         .ok_or("Group not found")?;
 
     let entry = target_group
         .entries
-        .iter_mut()
-        .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(id))
+        .iter()
+        .find(|e| e.get("id").and_then(|v| v.as_str()) == Some(&entry_id))
         .ok_or("Entry not found")?;
 
-    // parse value ตามประเภท
-    let parsed_value: Value = if value == "true" {
-        Value::Bool(true)
-    } else if value == "false" {
-        Value::Bool(false)
-    } else if let Ok(num) = value.parse::<i64>() {
-        Value::Number(num.into())
-    } else if value.starts_with('[') || value.starts_with('{') {
-        serde_json::from_str(value)?
-    } else {
-        Value::String(value.to_string())
-    };
-
-    entry[field] = parsed_value;
-
-    // validate หลังแก้ไข
     let validator = Validator::new(reg.clone());
     if let Err(errors) = validator.validate_entry(group, entry) {
         let response = json!({
