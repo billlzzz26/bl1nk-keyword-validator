@@ -93,7 +93,8 @@ pub struct SearchResult {
     pub aliases: Vec<String>,
     pub description: String,
     #[serde(rename = "matchType")]
-    pub match_type: String, // "exact", "partial", "alias"
+    pub match_type: String, // "exact", "partial", "fuzzy"
+    pub score: i64,
 }
 
 #[derive(Debug, Serialize)]

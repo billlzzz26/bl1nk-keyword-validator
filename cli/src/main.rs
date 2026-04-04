@@ -42,6 +42,10 @@ enum Commands {
         #[arg(value_name = "QUERY")]
         query: String,
 
+        /// Filter by Group ID
+        #[arg(short, long)]
+        group: Option<String>,
+
         /// Return raw JSON output
         #[arg(short, long)]
         json: bool,
@@ -112,8 +116,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cmd_validate(&registry, entry_id, group)?;
         }
 
-        Commands::Search { query, json } => {
-            cmd_search(&registry, &query, json)?;
+        Commands::Search { query, group, json } => {
+            cmd_search(&registry, &query, group, json)?;
         }
 
         Commands::Add { group, entry } => {
@@ -211,10 +215,11 @@ fn cmd_validate(
 fn cmd_search(
     registry: &bl1nk_keyword_core::KeywordRegistry,
     query: &str,
+    group_id: Option<String>,
     json_output: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let search = KeywordSearch::new(registry.clone());
-    let results = search.search(query);
+    let results = search.search(query, group_id.as_deref());
 
     if json_output {
         let response = json!({
@@ -231,7 +236,7 @@ fn cmd_search(
             for result in results {
                 println!("ID: {}", result.id);
                 println!("Group: {}", result.group_id);
-                println!("Match Type: {}", result.match_type);
+                println!("Match Type: {} (Score: {})", result.match_type, result.score);
                 println!("Aliases: {}", result.aliases.join(", "));
                 println!("Description: {}", result.description);
                 println!("---");

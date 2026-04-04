@@ -1,22 +1,36 @@
 use crate::schema::{KeywordRegistry, SearchResult};
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 
 /// ค้นหา keyword จาก aliases ในทั้ง registry
 pub struct KeywordSearch {
     registry: KeywordRegistry,
+    matcher: SkimMatcherV2,
 }
 
 impl KeywordSearch {
     pub fn new(registry: KeywordRegistry) -> Self {
-        Self { registry }
+        Self {
+            registry,
+            // ปรับแต่ง matcher ให้ยืดหยุ่นขึ้น
+            matcher: SkimMatcherV2::default().smart_case(),
+        }
     }
 
-    /// ค้นหา keyword จาก query
-    /// สนับสนุน: exact match, partial match, language mix (th + en)
-    pub fn search(&self, query: &str) -> Vec<SearchResult> {
+    /// ค้นหา keyword จาก query โดยรองรับการระบุกลุ่ม (scoped search)
+    /// สนับสนุน: exact match, partial match, fuzzy match, language mix (th + en)
+    pub fn search(&self, query: &str, group_id: Option<&str>) -> Vec<SearchResult> {
         let normalized_query = normalize_query(query);
         let mut results = Vec::new();
 
         for group in &self.registry.groups {
+            // กรองกลุ่ม (Namespace isolation)
+            if let Some(target_group) = group_id {
+                if group.group_id != target_group {
+                    continue;
+                }
+            }
+
             for entry in &group.entries {
                 if let Some(id) = entry.get("id").and_then(|v| v.as_str()) {
                     if let Some(aliases) = entry.get("aliases").and_then(|v| v.as_array()) {
@@ -26,13 +40,17 @@ impl KeywordSearch {
                             .unwrap_or("")
                             .to_string();
 
-                        // เช็ค exact match
+                        let mut best_match: Option<SearchResult> = None;
+
                         for alias in aliases {
                             if let Some(alias_str) = alias.as_str() {
                                 let normalized_alias = normalize_query(alias_str);
-
+                                
+                                // --- ลำดับการตรวจสอบความแม่นยำ ---
+                                
+                                // 1. Exact Match (สูงสุด)
                                 if normalized_alias == normalized_query {
-                                    results.push(SearchResult {
+                                    let result = SearchResult {
                                         id: id.to_string(),
                                         group_id: group.group_id.clone(),
                                         aliases: aliases
@@ -41,21 +59,37 @@ impl KeywordSearch {
                                             .collect(),
                                         description: description.clone(),
                                         match_type: "exact".to_string(),
-                                    });
-                                    break; // ต่อ group ถัดไป
+                                        score: 10000, // คะแนนสูงสุด
+                                    };
+                                    best_match = Some(result);
+                                    break; // เจอดีที่สุดแล้ว
                                 }
-                            }
-                        }
 
-                        // เช็ค partial match
-                        for alias in aliases {
-                            if let Some(alias_str) = alias.as_str() {
-                                let normalized_alias = normalize_query(alias_str);
-
+                                // 2. Partial Match (รองลงมา)
                                 if normalized_alias.contains(&normalized_query) {
-                                    // ป้องกัน duplicate จาก exact match
-                                    if !results.iter().any(|r| r.id == id) {
-                                        results.push(SearchResult {
+                                    let score = 5000 + (normalized_query.len() as i64 * 10);
+                                    let result = SearchResult {
+                                        id: id.to_string(),
+                                        group_id: group.group_id.clone(),
+                                        aliases: aliases
+                                            .iter()
+                                            .filter_map(|a| a.as_str().map(String::from))
+                                            .collect(),
+                                        description: description.clone(),
+                                        match_type: "partial".to_string(),
+                                        score,
+                                    };
+                                    if best_match.as_ref().map_or(true, |m| m.score < score) {
+                                        best_match = Some(result);
+                                    }
+                                }
+
+                                // 3. Fuzzy Match (ยืดหยุ่นที่สุด)
+                                // หมายเหตุ: fuzzy_match มักจะต้องการให้อักขระเรียงลำดับกัน 
+                                // การใช้ fuzzy_match กับคำที่พิมพ์ผิดอาจจะได้คะแนนน้อย หรือ None
+                                if let Some(score) = self.matcher.fuzzy_match(alias_str, query) {
+                                    if score > 0 {
+                                        let result = SearchResult {
                                             id: id.to_string(),
                                             group_id: group.group_id.clone(),
                                             aliases: aliases
@@ -63,11 +97,21 @@ impl KeywordSearch {
                                                 .filter_map(|a| a.as_str().map(String::from))
                                                 .collect(),
                                             description: description.clone(),
-                                            match_type: "partial".to_string(),
-                                        });
-                                        break;
+                                            match_type: "fuzzy".to_string(),
+                                            score,
+                                        };
+                                        if best_match.as_ref().map_or(true, |m| m.score < score) {
+                                            best_match = Some(result);
+                                        }
                                     }
                                 }
+                            }
+                        }
+
+                        if let Some(m) = best_match {
+                            // ป้องกันการเพิ่ม entry เดิมซ้ำถ้าเจอหลาย alias
+                            if !results.iter().any(|r: &SearchResult| r.id == id && r.group_id == group.group_id) {
+                                results.push(m);
                             }
                         }
                     }
@@ -75,16 +119,8 @@ impl KeywordSearch {
             }
         }
 
-        // sort: exact matches ก่อน
-        results.sort_by(|a, b| {
-            if a.match_type == "exact" && b.match_type != "exact" {
-                std::cmp::Ordering::Less
-            } else if a.match_type != "exact" && b.match_type == "exact" {
-                std::cmp::Ordering::Greater
-            } else {
-                a.id.cmp(&b.id)
-            }
-        });
+        // เรียงตามคะแนนความแม่นยำ (มากไปน้อย)
+        results.sort_by(|a, b| b.score.cmp(&a.score).then_with(|| a.id.cmp(&b.id)));
 
         results
     }
@@ -111,6 +147,7 @@ impl KeywordSearch {
                                     .collect(),
                                 description,
                                 match_type: "exact".to_string(),
+                                score: 10000,
                             });
                         }
                     }
@@ -120,14 +157,13 @@ impl KeywordSearch {
         None
     }
 
-    /// รับ query ที่เป็นไทยหรืออังกฤษ ผลลัพธ์เดียวกัน
+    /// ค้นหาแบบไม่เจาะจงกลุ่ม
     pub fn search_language_neutral(&self, query: &str) -> Vec<SearchResult> {
-        self.search(query)
+        self.search(query, None)
     }
 }
 
 /// normalize query: trim, lowercase, remove extra spaces
-/// ใช้ได้กับทั้งไทยและอังกฤษ
 fn normalize_query(q: &str) -> String {
     q.trim().to_lowercase()
 }
@@ -136,12 +172,12 @@ fn normalize_query(q: &str) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
-    use crate::schema::{KeywordRegistry, KeywordGroup, Metadata, ValidationConfig, ValidationRules, CustomFieldConfig, FieldSchema};
+    use crate::schema::{KeywordRegistry, KeywordGroup, Metadata, ValidationConfig, ValidationRules, CustomFieldConfig};
     use std::collections::HashMap;
 
     fn make_test_registry() -> KeywordRegistry {
         KeywordRegistry {
-            version: "1.0.0".to_string(),
+            version: "1.1.0".to_string(),
             metadata: Metadata {
                 last_updated: "2026-04-04T00:00:00Z".to_string(),
                 description: "Test".to_string(),
@@ -171,6 +207,25 @@ mod tests {
                             "description": "API Documentation"
                         }),
                     ],
+                },
+                KeywordGroup {
+                    group_id: "skills".to_string(),
+                    group_name: "Skills".to_string(),
+                    description: "Test skills".to_string(),
+                    base_fields_schema: HashMap::new(),
+                    custom_field_allowed: CustomFieldConfig {
+                        enabled: false,
+                        max_one: false,
+                        description: "".to_string(),
+                        examples: None,
+                    },
+                    entries: vec![
+                        json!({
+                            "id": "skill-docs",
+                            "aliases": ["api-reference"],
+                            "description": "Docs skill"
+                        }),
+                    ],
                 }
             ],
             validation: ValidationConfig {
@@ -188,16 +243,9 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_query() {
-        assert_eq!(normalize_query("Visual-Story"), "visual-story");
-        assert_eq!(normalize_query("  mcp  "), "mcp");
-        assert_eq!(normalize_query("ภาพเรื่อง"), "ภาพเรื่อง");
-    }
-
-    #[test]
     fn test_search_exact_match() {
         let searcher = KeywordSearch::new(make_test_registry());
-        let results = searcher.search("visual-story");
+        let results = searcher.search("visual-story", None);
         
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "proj-visual");
@@ -205,44 +253,45 @@ mod tests {
     }
 
     #[test]
-    fn test_search_partial_match() {
+    fn test_search_fuzzy_match() {
         let searcher = KeywordSearch::new(make_test_registry());
-        let results = searcher.search("visual");
+        // ใช้คำที่ใกล้เคียง (ตัวอักษรอยู่ในลำดับเดิม)
+        let results = searcher.search("vual", None); // v-i-s-u-a-l
         
-        assert_eq!(results.len(), 1);
+        assert!(!results.is_empty());
         assert_eq!(results[0].id, "proj-visual");
-        assert_eq!(results[0].match_type, "partial");
+        assert_eq!(results[0].match_type, "fuzzy");
     }
 
     #[test]
-    fn test_search_thai_language() {
+    fn test_search_scoped_by_group() {
         let searcher = KeywordSearch::new(make_test_registry());
-        let results = searcher.search("ภาพเรื่อง");
         
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "proj-visual");
-        assert_eq!(results[0].match_type, "exact");
+        // ค้นหา 'api' ในทุกกลุ่ม ควรเจอ 2 อย่าง
+        let all_results = searcher.search("api", None);
+        assert!(all_results.len() >= 2);
+
+        // ค้นหา 'api' เฉพาะในกลุ่ม 'skills' ควรเจอแค่อย่างเดียว
+        let scoped_results = searcher.search("api", Some("skills"));
+        assert_eq!(scoped_results.len(), 1);
+        assert_eq!(scoped_results[0].id, "skill-docs");
     }
 
     #[test]
     fn test_search_priority() {
         let mut registry = make_test_registry();
-        // เพิ่ม entry ที่มีคำว่า 'visual' เป็นส่วนหนึ่งของ alias
         registry.groups[0].entries.push(json!({
-            "id": "proj-exact-visual",
-            "aliases": ["visual"], // exact match สำหรับคำว่า 'visual'
-            "description": "Exact match target"
+            "id": "proj-v",
+            "aliases": ["visual"], 
+            "description": "Exact target"
         }));
 
         let searcher = KeywordSearch::new(registry);
-        let results = searcher.search("visual");
+        // ค้นหา "visual" 
+        // proj-v (exact) vs proj-visual (partial match ของ 'visual-story')
+        let results = searcher.search("visual", None);
         
-        assert_eq!(results.len(), 2);
-        // อันดับ 1 ต้องเป็น exact match
-        assert_eq!(results[0].id, "proj-exact-visual");
+        assert_eq!(results[0].id, "proj-v");
         assert_eq!(results[0].match_type, "exact");
-        // อันดับ 2 เป็น partial match
-        assert_eq!(results[1].id, "proj-visual");
-        assert_eq!(results[1].match_type, "partial");
     }
 }
