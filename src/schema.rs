@@ -102,24 +102,3 @@ pub struct SearchResponse {
     pub results: Vec<SearchResult>,
     pub count: usize,
 }
-
-// ============= Add/Edit Types =============
-
-#[derive(Debug, Serialize)]
-pub struct AddResponse {
-    pub success: bool,
-    #[serde(rename = "groupId")]
-    pub group_id: String,
-    pub id: String,
-    pub message: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct EditResponse {
-    pub success: bool,
-    #[serde(rename = "groupId")]
-    pub group_id: String,
-    pub id: String,
-    pub field: String,
-    pub message: String,
-}

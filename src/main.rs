@@ -270,6 +270,26 @@ fn cmd_add(
         std::process::exit(1);
     }
 
+    // check duplicate aliases
+    if let Some(aliases_arr) = entry.get("aliases").and_then(|v| v.as_array()) {
+        let aliases: Vec<String> = aliases_arr
+            .iter()
+            .filter_map(|a| a.as_str().map(String::from))
+            .collect();
+
+        if !aliases.is_empty() {
+            let alias_errors = validator.check_duplicate_aliases(group, None, &aliases);
+            if !alias_errors.is_empty() {
+                let response = json!({
+                    "valid": false,
+                    "errors": alias_errors
+                });
+                println!("{}", response);
+                std::process::exit(1);
+            }
+        }
+    }
+
     // add เข้า registry
     if let Some(target_group) = reg.groups.iter_mut().find(|g| g.group_id == group) {
         let entry_id = entry
@@ -366,6 +386,29 @@ fn cmd_edit(
         });
         println!("{}", response);
         std::process::exit(1);
+    }
+
+    // check duplicate aliases (เฉพาะตอนแก้ field aliases)
+    if field == "aliases" {
+        if let Some(aliases_arr) = entry.get("aliases").and_then(|v| v.as_array()) {
+            let aliases: Vec<String> = aliases_arr
+                .iter()
+                .filter_map(|a| a.as_str().map(String::from))
+                .collect();
+
+            if !aliases.is_empty() {
+                let alias_errors =
+                    validator.check_duplicate_aliases(group, Some(&entry_id), &aliases);
+                if !alias_errors.is_empty() {
+                    let response = json!({
+                        "valid": false,
+                        "errors": alias_errors
+                    });
+                    println!("{}", response);
+                    std::process::exit(1);
+                }
+            }
+        }
     }
 
     save_registry(schema_path, &reg)?;
