@@ -91,21 +91,30 @@ enum Commands {
         #[arg(short, long)]
         json: bool,
     },
+/// List all entries in a group
+List {
+    /// Group ID
+    #[arg(value_name = "GROUP")]
+    group: String,
 
-    /// List all entries in a group
-    List {
-        /// Group ID
-        #[arg(value_name = "GROUP")]
-        group: String,
+    /// Return raw JSON output
+    #[arg(short, long)]
+    json: bool,
+},
 
-        /// Return raw JSON output
-        #[arg(short, long)]
-        json: bool,
-    },
+/// Export JSON Schema for the registry
+SchemaExport,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
+
+    // schema-export ไม่ต้องโหลด registry ก่อน
+    if let Commands::SchemaExport = cli.command {
+        let schema = schemars::schema_for!(bl1nk_keyword_core::schema::KeywordRegistry);
+        println!("{}", serde_json::to_string_pretty(&schema)?);
+        return Ok(());
+    }
 
     // โหลด registry
     let registry =
@@ -140,6 +149,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::List { group, json } => {
             cmd_list(&registry, &group, json)?;
         }
+
+        Commands::SchemaExport => unreachable!(),
     }
 
     Ok(())

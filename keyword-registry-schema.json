@@ -62,7 +62,8 @@
         "examples": [
           {
             "fieldName": "primaryTech",
-            "type": "string"
+            "type": "string",
+            "description": "Main tech stack"
           }
         ]
       },
@@ -125,16 +126,19 @@
             "analysis",
             "automation"
           ],
-          "required": true
+          "required": true,
+          "description": "Skill category"
         },
         "description": {
           "type": "string",
           "maxLength": 255,
-          "required": true
+          "required": true,
+          "description": "Skill description"
         },
         "framework": {
           "type": "string",
-          "required": false
+          "required": false,
+          "description": "Primary framework"
         }
       },
       "customFieldAllowed": {
@@ -145,7 +149,8 @@
           {
             "fieldName": "complexity",
             "type": "enum",
-            "values": ["beginner", "intermediate", "advanced"]
+            "values": ["beginner", "intermediate", "advanced"],
+            "description": "Difficulty level"
           }
         ]
       },
@@ -191,12 +196,14 @@
             "tool",
             "methodology"
           ],
-          "required": true
+          "required": true,
+          "description": "Keyword type"
         },
         "description": {
           "type": "string",
           "maxLength": 255,
-          "required": true
+          "required": true,
+          "description": "Keyword description"
         },
         "relatedIds": {
           "type": "array",
@@ -212,7 +219,8 @@
         "examples": [
           {
             "fieldName": "exampleUrl",
-            "type": "string"
+            "type": "string",
+            "description": "External reference link"
           }
         ]
       },

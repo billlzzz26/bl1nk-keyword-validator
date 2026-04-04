@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use schemars::JsonSchema;
 
 // ============= Schema Types =============
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct KeywordRegistry {
     pub version: String,
     pub metadata: Metadata,
@@ -11,7 +12,7 @@ pub struct KeywordRegistry {
     pub validation: ValidationConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Metadata {
     #[serde(rename = "lastUpdated")]
     pub last_updated: String,
@@ -19,7 +20,7 @@ pub struct Metadata {
     pub owner: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct KeywordGroup {
     #[serde(rename = "groupId")]
     pub group_id: String,
@@ -33,7 +34,7 @@ pub struct KeywordGroup {
     pub entries: Vec<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FieldSchema {
     #[serde(rename = "type")]
     pub field_type: String,
@@ -50,7 +51,7 @@ pub struct FieldSchema {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CustomFieldConfig {
     pub enabled: bool,
     #[serde(rename = "maxOne")]
@@ -60,14 +61,14 @@ pub struct CustomFieldConfig {
     pub examples: Option<Vec<serde_json::Value>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ValidationConfig {
     pub rules: ValidationRules,
     #[serde(rename = "errorMessages")]
     pub error_messages: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ValidationRules {
     #[serde(rename = "aliasMinLength")]
     pub alias_min_length: usize,
@@ -85,7 +86,7 @@ pub struct ValidationRules {
 
 // ============= Search Types =============
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SearchResult {
     pub id: String,
     #[serde(rename = "groupId")]
