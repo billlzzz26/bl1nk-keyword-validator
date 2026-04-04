@@ -276,8 +276,7 @@ fn cmd_add(
     entry_str: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut registry = registry.clone();
-    let new_entry: Value = if entry_str.starts_with('@') {
-        let path = &entry_str[1..];
+    let new_entry: Value = if let Some(path) = entry_str.strip_prefix('@') {
         let content = std::fs::read_to_string(path)?;
         serde_json::from_str(&content)?
     } else {

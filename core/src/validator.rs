@@ -28,7 +28,7 @@ impl Validator {
 
         // สร้าง map ของ aliases ที่มีอยู่ทั้งหมด
         for group in &self.registry.groups {
-            for (_entry_idx, entry) in group.entries.iter().enumerate() {
+            for entry in group.entries.iter() {
                 if let Some(entry_id) = entry.get("id").and_then(|v| v.as_str()) {
                     // ข้าม entry ที่กำลังแก้ไขอยู่
                     if let Some(editing_id) = editing_entry_id {
@@ -93,14 +93,12 @@ impl Validator {
 
         // ตรวจสอบ required base fields
         for (field_name, field_schema) in &group.base_fields_schema {
-            if field_schema.required.unwrap_or(false) {
-                if entry.get(field_name).is_none() {
-                    errors.push(ValidationError {
-                        code: "MISSING_REQUIRED_FIELD".to_string(),
-                        message: format!("Missing required field '{}'", field_name),
-                        field: Some(field_name.clone()),
-                    });
-                }
+            if field_schema.required.unwrap_or(false) && entry.get(field_name).is_none() {
+                errors.push(ValidationError {
+                    code: "MISSING_REQUIRED_FIELD".to_string(),
+                    message: format!("Missing required field '{}'", field_name),
+                    field: Some(field_name.clone()),
+                });
             }
         }
 
@@ -170,20 +168,15 @@ impl Validator {
                             // ตรวจสอบ array item type
                             if let Some(item_type) = &field_schema.item_type {
                                 for (idx, item) in arr.iter().enumerate() {
-                                    match item_type.as_str() {
-                                        "string" => {
-                                            if !item.is_string() {
-                                                errors.push(ValidationError {
-                                                    code: "INVALID_TYPE".to_string(),
-                                                    message: format!(
-                                                        "Array item {} in field '{}' expected type 'string'",
-                                                        idx, field_name
-                                                    ),
-                                                    field: Some(field_name.clone()),
-                                                });
-                                            }
-                                        }
-                                        _ => {}
+                                    if item_type.as_str() == "string" && !item.is_string() {
+                                        errors.push(ValidationError {
+                                            code: "INVALID_TYPE".to_string(),
+                                            message: format!(
+                                                "Array item {} in field '{}' expected type 'string'",
+                                                idx, field_name
+                                            ),
+                                            field: Some(field_name.clone()),
+                                        });
                                     }
                                 }
                             }
@@ -269,7 +262,7 @@ impl Validator {
         for group in &self.registry.groups {
             let mut group_ids = std::collections::HashSet::new();
 
-            for (_entry_idx, entry) in group.entries.iter().enumerate() {
+            for entry in group.entries.iter() {
                 if let Some(entry_id) = entry.get("id").and_then(|v| v.as_str()) {
                     // 1. ตรวจสอบ ID ซ้ำภายในกลุ่ม (Namespace Isolation)
                     if !group_ids.insert(entry_id.to_string()) {

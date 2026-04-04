@@ -79,7 +79,7 @@ impl KeywordSearch {
                                         match_type: "partial".to_string(),
                                         score,
                                     };
-                                    if best_match.as_ref().map_or(true, |m| m.score < score) {
+                                    if best_match.as_ref().is_none_or(|m| m.score < score) {
                                         best_match = Some(result);
                                     }
                                 }
@@ -100,7 +100,7 @@ impl KeywordSearch {
                                             match_type: "fuzzy".to_string(),
                                             score,
                                         };
-                                        if best_match.as_ref().map_or(true, |m| m.score < score) {
+                                        if best_match.as_ref().is_none_or(|m| m.score < score) {
                                             best_match = Some(result);
                                         }
                                     }
