@@ -7,10 +7,10 @@ use std::fs;
 use std::path::Path;
 
 // Re-export commonly used types
-pub use schema::{KeywordRegistry, KeywordGroup, SearchResult};
-pub use validator::Validator;
+pub use error::{ValidationError, ValidatorError};
+pub use schema::{KeywordGroup, KeywordRegistry, SearchResult};
 pub use search::KeywordSearch;
-pub use error::{ValidatorError, ValidationError};
+pub use validator::Validator;
 
 /// โหลด schema จากไฟล์ JSON (พร้อมตรวจสอบความปลอดภัยเบื้องต้น)
 pub fn load_registry<P: AsRef<Path>>(path: P) -> Result<KeywordRegistry, ValidatorError> {
@@ -27,7 +27,9 @@ pub fn load_registry<P: AsRef<Path>>(path: P) -> Result<KeywordRegistry, Validat
     }
 
     let content = fs::read_to_string(path).map_err(|_| {
-        ValidatorError::FileIo("Failed to read registry file: Access denied or not found".to_string())
+        ValidatorError::FileIo(
+            "Failed to read registry file: Access denied or not found".to_string(),
+        )
     })?;
 
     let registry: KeywordRegistry = serde_json::from_str(&content)?;
@@ -66,7 +68,10 @@ pub fn generate_markdown(registry: &KeywordRegistry) -> String {
 
     md.push_str(&format!("# Keyword Registry (v{})\n\n", registry.version));
     md.push_str(&format!("{}\n\n", registry.metadata.description));
-    md.push_str(&format!("**Last Updated:** {}\n", registry.metadata.last_updated));
+    md.push_str(&format!(
+        "**Last Updated:** {}\n",
+        registry.metadata.last_updated
+    ));
     md.push_str(&format!("**Owner:** {}\n\n", registry.metadata.owner));
 
     md.push_str("## Table of Contents\n\n");
@@ -85,11 +90,20 @@ pub fn generate_markdown(registry: &KeywordRegistry) -> String {
 
         for entry in &group.entries {
             let id = entry.get("id").and_then(|v| v.as_str()).unwrap_or("-");
-            let desc = entry.get("description").and_then(|v| v.as_str()).unwrap_or("-");
-            
-            let aliases = entry.get("aliases")
+            let desc = entry
+                .get("description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("-");
+
+            let aliases = entry
+                .get("aliases")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|a| a.as_str()).collect::<Vec<_>>().join(", "))
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|a| a.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
                 .unwrap_or_else(|| "-".to_string());
 
             let type_str = entry.get("type").and_then(|v| v.as_str()).unwrap_or("-");

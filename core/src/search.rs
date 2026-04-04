@@ -45,9 +45,9 @@ impl KeywordSearch {
                         for alias in aliases {
                             if let Some(alias_str) = alias.as_str() {
                                 let normalized_alias = normalize_query(alias_str);
-                                
+
                                 // --- ลำดับการตรวจสอบความแม่นยำ ---
-                                
+
                                 // 1. Exact Match (สูงสุด)
                                 if normalized_alias == normalized_query {
                                     let result = SearchResult {
@@ -85,7 +85,7 @@ impl KeywordSearch {
                                 }
 
                                 // 3. Fuzzy Match (ยืดหยุ่นที่สุด)
-                                // หมายเหตุ: fuzzy_match มักจะต้องการให้อักขระเรียงลำดับกัน 
+                                // หมายเหตุ: fuzzy_match มักจะต้องการให้อักขระเรียงลำดับกัน
                                 // การใช้ fuzzy_match กับคำที่พิมพ์ผิดอาจจะได้คะแนนน้อย หรือ None
                                 if let Some(score) = self.matcher.fuzzy_match(alias_str, query) {
                                     if score > 0 {
@@ -110,7 +110,10 @@ impl KeywordSearch {
 
                         if let Some(m) = best_match {
                             // ป้องกันการเพิ่ม entry เดิมซ้ำถ้าเจอหลาย alias
-                            if !results.iter().any(|r: &SearchResult| r.id == id && r.group_id == group.group_id) {
+                            if !results
+                                .iter()
+                                .any(|r: &SearchResult| r.id == id && r.group_id == group.group_id)
+                            {
                                 results.push(m);
                             }
                         }
@@ -171,8 +174,11 @@ fn normalize_query(q: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::{
+        CustomFieldConfig, KeywordGroup, KeywordRegistry, Metadata, ValidationConfig,
+        ValidationRules,
+    };
     use serde_json::json;
-    use crate::schema::{KeywordRegistry, KeywordGroup, Metadata, ValidationConfig, ValidationRules, CustomFieldConfig};
     use std::collections::HashMap;
 
     fn make_test_registry() -> KeywordRegistry {
@@ -219,14 +225,12 @@ mod tests {
                         description: "".to_string(),
                         examples: None,
                     },
-                    entries: vec![
-                        json!({
-                            "id": "skill-docs",
-                            "aliases": ["api-reference"],
-                            "description": "Docs skill"
-                        }),
-                    ],
-                }
+                    entries: vec![json!({
+                        "id": "skill-docs",
+                        "aliases": ["api-reference"],
+                        "description": "Docs skill"
+                    })],
+                },
             ],
             validation: ValidationConfig {
                 rules: ValidationRules {
@@ -246,7 +250,7 @@ mod tests {
     fn test_search_exact_match() {
         let searcher = KeywordSearch::new(make_test_registry());
         let results = searcher.search("visual-story", None);
-        
+
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "proj-visual");
         assert_eq!(results[0].match_type, "exact");
@@ -257,7 +261,7 @@ mod tests {
         let searcher = KeywordSearch::new(make_test_registry());
         // ใช้คำที่ใกล้เคียง (ตัวอักษรอยู่ในลำดับเดิม)
         let results = searcher.search("vual", None); // v-i-s-u-a-l
-        
+
         assert!(!results.is_empty());
         assert_eq!(results[0].id, "proj-visual");
         assert_eq!(results[0].match_type, "fuzzy");
@@ -266,7 +270,7 @@ mod tests {
     #[test]
     fn test_search_scoped_by_group() {
         let searcher = KeywordSearch::new(make_test_registry());
-        
+
         // ค้นหา 'api' ในทุกกลุ่ม ควรเจอ 2 อย่าง
         let all_results = searcher.search("api", None);
         assert!(all_results.len() >= 2);
@@ -282,15 +286,15 @@ mod tests {
         let mut registry = make_test_registry();
         registry.groups[0].entries.push(json!({
             "id": "proj-v",
-            "aliases": ["visual"], 
+            "aliases": ["visual"],
             "description": "Exact target"
         }));
 
         let searcher = KeywordSearch::new(registry);
-        // ค้นหา "visual" 
+        // ค้นหา "visual"
         // proj-v (exact) vs proj-visual (partial match ของ 'visual-story')
         let results = searcher.search("visual", None);
-        
+
         assert_eq!(results[0].id, "proj-v");
         assert_eq!(results[0].match_type, "exact");
     }

@@ -255,7 +255,10 @@ fn cmd_search(
             for result in results {
                 println!("ID: {}", result.id);
                 println!("Group: {}", result.group_id);
-                println!("Match Type: {} (Score: {})", result.match_type, result.score);
+                println!(
+                    "Match Type: {} (Score: {})",
+                    result.match_type, result.score
+                );
                 println!("Aliases: {}", result.aliases.join(", "));
                 println!("Description: {}", result.description);
                 println!("---");
@@ -273,7 +276,7 @@ fn cmd_add(
     entry_str: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut registry = registry.clone();
-    let mut new_entry: Value = if entry_str.starts_with('@') {
+    let new_entry: Value = if entry_str.starts_with('@') {
         let path = &entry_str[1..];
         let content = std::fs::read_to_string(path)?;
         serde_json::from_str(&content)?

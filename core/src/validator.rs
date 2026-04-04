@@ -78,11 +78,7 @@ impl Validator {
         let mut errors = Vec::new();
 
         // หา group
-        let group = self
-            .registry
-            .groups
-            .iter()
-            .find(|g| g.group_id == group_id);
+        let group = self.registry.groups.iter().find(|g| g.group_id == group_id);
 
         let group = match group {
             Some(g) => g,
@@ -361,85 +357,83 @@ mod tests {
                 description: "Test registry".to_string(),
                 owner: "test".to_string(),
             },
-            groups: vec![
-                KeywordGroup {
-                    group_id: "projects".to_string(),
-                    group_name: "Projects".to_string(),
-                    description: "Test projects".to_string(),
-                    base_fields_schema: {
-                        let mut map = HashMap::new();
-                        map.insert(
-                            "id".to_string(),
-                            FieldSchema {
-                                field_type: "string".to_string(),
-                                item_type: None,
-                                pattern: Some("^proj-[a-z]+$".to_string()),
-                                values: None,
-                                required: Some(true),
-                                max_length: None,
-                                description: "Project ID".to_string(),
-                            },
-                        );
-                        map.insert(
-                            "type".to_string(),
-                            FieldSchema {
-                                field_type: "enum".to_string(),
-                                item_type: None,
-                                pattern: None,
-                                values: Some(vec!["app".to_string(), "library".to_string()]),
-                                required: Some(true),
-                                max_length: None,
-                                description: "Project type".to_string(),
-                            },
-                        );
-                        map.insert(
-                            "description".to_string(),
-                            FieldSchema {
-                                field_type: "string".to_string(),
-                                item_type: None,
-                                pattern: None,
-                                values: None,
-                                required: Some(true),
-                                max_length: Some(255),
-                                description: "Short description".to_string(),
-                            },
-                        );
-                        map.insert(
-                            "aliases".to_string(),
-                            FieldSchema {
-                                field_type: "array".to_string(),
-                                item_type: Some("string".to_string()),
-                                pattern: None,
-                                values: None,
-                                required: Some(true),
-                                max_length: None,
-                                description: "Search aliases".to_string(),
-                            },
-                        );
-                        map
-                    },
-                    custom_field_allowed: CustomFieldConfig {
-                        enabled: false,
-                        max_one: false,
-                        description: "".to_string(),
-                        examples: None,
-                    },
-                    entries: vec![
-                        json!({
-                            "id": "proj-alpha",
-                            "type": "app",
-                            "description": "Project Alpha Description",
-                            "aliases": ["alpha", "project-alpha", "โปรเจกต์อัลฟา"]
-                        }),
-                        json!({
-                            "id": "proj-beta",
-                            "type": "library",
-                            "description": "Project Beta Description",
-                            "aliases": ["beta", "project-beta"]
-                        }),
-                    ],
+            groups: vec![KeywordGroup {
+                group_id: "projects".to_string(),
+                group_name: "Projects".to_string(),
+                description: "Test projects".to_string(),
+                base_fields_schema: {
+                    let mut map = HashMap::new();
+                    map.insert(
+                        "id".to_string(),
+                        FieldSchema {
+                            field_type: "string".to_string(),
+                            item_type: None,
+                            pattern: Some("^proj-[a-z]+$".to_string()),
+                            values: None,
+                            required: Some(true),
+                            max_length: None,
+                            description: "Project ID".to_string(),
+                        },
+                    );
+                    map.insert(
+                        "type".to_string(),
+                        FieldSchema {
+                            field_type: "enum".to_string(),
+                            item_type: None,
+                            pattern: None,
+                            values: Some(vec!["app".to_string(), "library".to_string()]),
+                            required: Some(true),
+                            max_length: None,
+                            description: "Project type".to_string(),
+                        },
+                    );
+                    map.insert(
+                        "description".to_string(),
+                        FieldSchema {
+                            field_type: "string".to_string(),
+                            item_type: None,
+                            pattern: None,
+                            values: None,
+                            required: Some(true),
+                            max_length: Some(255),
+                            description: "Short description".to_string(),
+                        },
+                    );
+                    map.insert(
+                        "aliases".to_string(),
+                        FieldSchema {
+                            field_type: "array".to_string(),
+                            item_type: Some("string".to_string()),
+                            pattern: None,
+                            values: None,
+                            required: Some(true),
+                            max_length: None,
+                            description: "Search aliases".to_string(),
+                        },
+                    );
+                    map
                 },
-            ],
+                custom_field_allowed: CustomFieldConfig {
+                    enabled: false,
+                    max_one: false,
+                    description: "".to_string(),
+                    examples: None,
+                },
+                entries: vec![
+                    json!({
+                        "id": "proj-alpha",
+                        "type": "app",
+                        "description": "Project Alpha Description",
+                        "aliases": ["alpha", "project-alpha", "โปรเจกต์อัลฟา"]
+                    }),
+                    json!({
+                        "id": "proj-beta",
+                        "type": "library",
+                        "description": "Project Beta Description",
+                        "aliases": ["beta", "project-beta"]
+                    }),
+                ],
+            }],
             validation: ValidationConfig {
                 rules: ValidationRules {
                     alias_min_length: 2,
@@ -447,7 +441,12 @@ mod tests {
                     description_min_length: 10,
                     description_max_length: 255,
                     custom_field_per_entry: 1,
-                    required_base_fields: vec!["id".to_string(), "aliases".to_string(), "type".to_string(), "description".to_string()],
+                    required_base_fields: vec![
+                        "id".to_string(),
+                        "aliases".to_string(),
+                        "type".to_string(),
+                        "description".to_string(),
+                    ],
                 },
                 error_messages: HashMap::new(),
             },
@@ -461,7 +460,7 @@ mod tests {
 
         let validator = Validator::new(registry);
         let result = validator.validate_registry();
-        
+
         assert!(result.is_err());
         let errors = result.unwrap_err();
         assert_eq!(errors[0].code, "INCOMPATIBLE_VERSION");
@@ -585,7 +584,7 @@ mod tests {
 
         let validator = Validator::new(registry);
         let result = validator.validate_registry();
-        
+
         assert!(result.is_err());
         let errors = result.unwrap_err();
         assert!(errors.iter().any(|e| e.code == "DUPLICATE_ID"));
@@ -596,11 +595,7 @@ mod tests {
         let registry = make_test_registry();
         let validator = Validator::new(registry);
 
-        let result = validator.check_duplicate_aliases(
-            "projects",
-            None,
-            &["alpha".to_string()],
-        );
+        let result = validator.check_duplicate_aliases("projects", None, &["alpha".to_string()]);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].code, "DUPLICATE_ALIAS");
     }
