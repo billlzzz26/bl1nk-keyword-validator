@@ -5,7 +5,7 @@
 **From skill patterns:** Skills don't just match keywords—they detect **intent levels**
 
 ### Skill Pattern Example:
-```
+```text
 write-api-reference skill:
   Level 1 (Broad):    "Use when user asks to write"
   Level 2 (Medium):   "Trigger on 'document this function'"
@@ -21,13 +21,13 @@ write-api-reference skill:
 ## Enhancement 1: Hierarchical Query Matching
 
 ### Current Search:
-```rust
+```text
 // Treats all matches equally
 search("cache") → returns all entries with "cache" in aliases
 ```
 
 ### Smart Search (Proposed):
-```json
+```text
 // Entry with intent layers
 {
   "id": "cache-components",
@@ -44,7 +44,7 @@ search("cache") → returns all entries with "cache" in aliases
 ```
 
 ### Search Logic:
-```
+```text
 User query: "how to optimize cache in next.js"
 
 Match scoring:
@@ -61,7 +61,7 @@ Result: cache-components (total: 1800) ranks highest
 ## Enhancement 2: Semantic Grouping (Like Skill Namespaces)
 
 ### Current Registry:
-```
+```text
 All entries flat — no clustering signal
 ```
 
@@ -78,7 +78,7 @@ All entries flat — no clustering signal
 ```
 
 ### Search Enhancement:
-```
+```text
 Query: "I need to set up MCP"
 
 Returns:
@@ -93,7 +93,7 @@ Returns:
 ## Enhancement 3: Anti-Intent Detection (Negative Matching)
 
 ### From Skill Pattern:
-```
+```text
 cache-components skill:
   intents: ["performance optimization", "rendering efficiency"]
   anti_intents: ["client-side caching", "browser cache optimization"]
@@ -111,7 +111,7 @@ cache-components skill:
 ```
 
 ### Smart Search Logic:
-```
+```text
 Query: "optimize client-side cache"
 
 cache-components entry:
@@ -127,7 +127,7 @@ Better result: web-caching-guide (if exists)
 ## Enhancement 4: Context-Aware Alias Expansion
 
 ### Skill Pattern Observation:
-```
+```text
 One skill responds to multiple trigger contexts:
 - "write docs" → write-api-reference
 - "document function" → write-api-reference  
@@ -149,7 +149,7 @@ One skill responds to multiple trigger contexts:
 ```
 
 ### Search Engine:
-```
+```text
 Query: "next.js caching strategy"
 
 Expanded search:
@@ -165,7 +165,7 @@ Result: cache-components (high confidence)
 ## Enhancement 5: Trigger Pattern Detection (Skill Activation Logic)
 
 ### Skill Pattern:
-```
+```text
 god-architecture skill:
   Triggers: ["architecture", "system design", "refactor", "monorepo"]
   Auto-activation: When mention "restructure codebase"
@@ -188,7 +188,7 @@ god-architecture skill:
 ```
 
 ### Search Logic:
-```
+```text
 Query: "visual story workflow"
 
 Score calculation:
@@ -205,7 +205,7 @@ vs. random entries with just "visual" (low confidence)
 ## Enhancement 6: Prerequisite-Aware Search (Skill Learning Path)
 
 ### Skill Pattern:
-```
+```text
 mcp-integration-deployment skill:
   Prerequisites: ["mcp-server-fundamentals", "mcp-testing-debugging"]
   "You should know these before using this skill"
@@ -221,7 +221,7 @@ mcp-integration-deployment skill:
 ```
 
 ### Search Enhancement:
-```
+```text
 User query: "how to deploy MCP"
 User experience: "beginner"
 
@@ -277,7 +277,7 @@ pub fn search_intelligent(
 ```
 
 #### Step 3: CLI Commands
-```bash
+```text
 # Current
 keyword-registry search "cache"
 
@@ -289,7 +289,7 @@ keyword-registry search "cache" --learning-path beginner
 ```
 
 #### Step 4: Validation in CI/CD
-```yaml
+```text
 # New CI check
 - name: Validate Intent Consistency
   run: |
