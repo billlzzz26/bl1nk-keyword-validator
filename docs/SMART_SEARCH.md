@@ -20,13 +20,22 @@ write-api-reference skill:
 
 ## Enhancement 1: Hierarchical Query Matching
 
-### Current Search:
-```text
-// Treats all matches equally
-search("cache") → returns all entries with "cache" in aliases
+### Current Search (Existing Baseline):
+```rust
+// Already ranks by match type: exact (10000) > partial (5000+) > fuzzy (variable)
+search("cache") → returns [
+  SearchResult { id: "cache-components", match_type: "exact", score: 10000 },
+  SearchResult { id: "caching-guide", match_type: "partial", score: 5050 },
+  SearchResult { id: "perf-cache", match_type: "fuzzy", score: 340 }
+]
+// Also supports optional group scoping: search(query, Some("skills"))
 ```
 
-### Smart Search (Proposed):
+**Current limitation:** Scoring doesn't distinguish *intent* (e.g., "cache optimization" vs "browser cache") — treats all matches in same category equally
+
+### Smart Search Enhancement (Proposed):
+
+**Adds:** Intent layers + anti-intent filtering + context awareness on top of existing match-type scoring
 ```text
 // Entry with intent layers
 {
@@ -43,17 +52,24 @@ search("cache") → returns all entries with "cache" in aliases
 }
 ```
 
-### Search Logic:
+### Search Logic (Existing + Smart Enhancement):
 ```text
 User query: "how to optimize cache in next.js"
 
-Match scoring:
-1. Action verb match ("optimize") → score +200
-2. Context noun match ("cache", "next.js") → score +100 each
-3. Intent signal match ("performance optimization") → score +500
-4. Config pattern detection → score +1000
+Step 1 - Existing match-type scoring (baseline):
+  cache-components alias="cache-components" → exact match, base score: 10000
+  caching-guide contains "cache" → partial match, base score: 5050
+  perf-cache fuzzy match → fuzzy match, base score: 340
 
-Result: cache-components (total: 1800) ranks highest
+Step 2 - Smart intent layer (NEW - multiplicative boost on base):
+  cache-components has intent_signals matching "optimization" → score ×1.5 (10000 → 15000)
+  caching-guide no intent match → score ×1.0 (5050 → 5050)
+  perf-cache no intent match → score ×1.0 (340 → 340)
+
+Step 3 - Anti-intent filter (NEW - deprioritize):
+  If query included "disable" → deprioritize entries with anti_intent: ["performance-only"]
+
+Final ranking: cache-components (15000) > caching-guide (5050) > perf-cache (340)
 ```
 
 ---
