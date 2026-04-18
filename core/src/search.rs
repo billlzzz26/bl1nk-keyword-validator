@@ -1,26 +1,158 @@
+use std::collections::HashMap;
 use crate::schema::{KeywordRegistry, SearchResult};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+
+/// ตัดคำ (Tokenize) ข้อความโดยรองรับการแบ่งคำด้วยช่องว่างเบื้องต้น และ Thai Bigram สำหรับ BM25
+fn tokenize(text: &str) -> Vec<String> {
+    let normalized = normalize_query(text);
+    let mut tokens = Vec::new();
+    for word in normalized.split_whitespace() {
+        let chars: Vec<char> = word.chars().collect();
+        let is_thai = chars.iter().any(|&c| c >= '\u{0E00}' && c <= '\u{0E7F}');
+
+        if is_thai && chars.len() > 1 {
+            // สร้าง Bigram สำหรับภาษาไทยเพื่อเพิ่มความแม่นยำในการค้นหา
+            for i in 0..chars.len() - 1 {
+                let mut b = String::new();
+                b.push(chars[i]);
+                b.push(chars[i+1]);
+                tokens.push(b);
+            }
+        } else if !chars.is_empty() {
+            tokens.push(word.to_string());
+        }
+    }
+    tokens
+}
+
+#[derive(Default)]
+struct Bm25Index {
+    docs: Vec<Bm25Document>,
+    doc_freqs: HashMap<String, usize>,
+    avgdl: f64,
+}
+
+struct Bm25Document {
+    doc_id: String,
+    tokens: Vec<String>,
+}
+
+impl Bm25Index {
+    /// สร้างดัชนี BM25 จากข้อมูลใน Registry
+    fn build(registry: &KeywordRegistry) -> Self {
+        let mut docs = Vec::new();
+        let mut doc_freqs = HashMap::new();
+        let mut total_len = 0;
+
+        for group in &registry.groups {
+            for entry in &group.entries {
+                if let Some(id) = entry.get("id").and_then(|v| v.as_str()) {
+                    let mut content = String::new();
+                    content.push_str(id);
+                    content.push(' ');
+
+                    if let Some(aliases) = entry.get("aliases").and_then(|v| v.as_array()) {
+                        for a in aliases {
+                            if let Some(s) = a.as_str() {
+                                content.push_str(s);
+                                content.push(' ');
+                            }
+                        }
+                    }
+
+                    if let Some(desc) = entry.get("description").and_then(|v| v.as_str()) {
+                        content.push_str(desc);
+                    }
+
+                    let tokens = tokenize(&content);
+                    total_len += tokens.len();
+
+                    let mut unique_tokens = tokens.clone();
+                    unique_tokens.sort();
+                    unique_tokens.dedup();
+
+                    for t in unique_tokens {
+                        *doc_freqs.entry(t).or_insert(0) += 1;
+                    }
+
+                    docs.push(Bm25Document {
+                        doc_id: format!("{}::{}", group.group_id, id),
+                        tokens,
+                    });
+                }
+            }
+        }
+
+        let avgdl = if docs.is_empty() {
+            0.0
+        } else {
+            total_len as f64 / docs.len() as f64
+        };
+
+        Self {
+            docs,
+            doc_freqs,
+            avgdl,
+        }
+    }
+
+    /// คำนวณคะแนน BM25 สำหรับเอกสารที่ระบุ
+    fn score(&self, doc_id: &str, query_tokens: &[String]) -> f64 {
+        let k1 = 1.2;
+        let b = 0.75;
+        let n = self.docs.len() as f64;
+
+        let doc = match self.docs.iter().find(|d| d.doc_id == doc_id) {
+            Some(d) => d,
+            None => return 0.0,
+        };
+
+        let dl = doc.tokens.len() as f64;
+        let mut score = 0.0;
+
+        for q in query_tokens {
+            let nq = *self.doc_freqs.get(q).unwrap_or(&0) as f64;
+            if nq == 0.0 {
+                continue;
+            }
+
+            let idf = ((n - nq + 0.5) / (nq + 0.5) + 1.0).ln();
+            let fq = doc.tokens.iter().filter(|t| t == &q).count() as f64;
+
+            if fq > 0.0 {
+                let tf = (fq * (k1 + 1.0)) / (fq + k1 * (1.0 - b + b * (dl / self.avgdl.max(1.0))));
+                score += idf * tf;
+            }
+        }
+
+        score
+    }
+}
 
 /// ค้นหา keyword จาก aliases ในทั้ง registry
 pub struct KeywordSearch {
     registry: KeywordRegistry,
     matcher: SkimMatcherV2,
+    bm25: Bm25Index,
 }
 
 impl KeywordSearch {
     pub fn new(registry: KeywordRegistry) -> Self {
+        let bm25 = Bm25Index::build(&registry);
         Self {
             registry,
             // ปรับแต่ง matcher ให้ยืดหยุ่นขึ้น
             matcher: SkimMatcherV2::default().smart_case(),
+            bm25,
         }
     }
 
     /// ค้นหา keyword จาก query โดยรองรับการระบุกลุ่ม (scoped search)
-    /// สนับสนุน: exact match, partial match, fuzzy match, language mix (th + en)
+    /// สนับสนุน: exact match, partial match, fuzzy match, smart/bm25 match
     pub fn search(&self, query: &str, group_id: Option<&str>) -> Vec<SearchResult> {
         let normalized_query = normalize_query(query);
+        let query_tokens = tokenize(query);
         let mut results = Vec::new();
 
         for group in &self.registry.groups {
@@ -41,6 +173,20 @@ impl KeywordSearch {
                             .to_string();
 
                         let mut best_match: Option<SearchResult> = None;
+
+                        // 0. Smart Match (BM25) สำหรับการจับคู่เบื้องต้น
+                        let doc_id = format!("{}::{}", group.group_id, id);
+                        let bm25_score = self.bm25.score(&doc_id, &query_tokens);
+                        if bm25_score > 0.1 {
+                             best_match = Some(SearchResult {
+                                 id: id.to_string(),
+                                 group_id: group.group_id.clone(),
+                                 aliases: aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect(),
+                                 description: description.clone(),
+                                 match_type: "smart".to_string(),
+                                 score: (bm25_score * 1000.0) as i64,
+                             });
+                        }
 
                         for alias in aliases {
                             if let Some(alias_str) = alias.as_str() {
@@ -79,14 +225,12 @@ impl KeywordSearch {
                                         match_type: "partial".to_string(),
                                         score,
                                     };
-                                    if best_match.as_ref().is_none_or(|m| m.score < score) {
+                                    if best_match.as_ref().map_or(true, |m| m.score < score) {
                                         best_match = Some(result);
                                     }
                                 }
 
                                 // 3. Fuzzy Match (ยืดหยุ่นที่สุด)
-                                // หมายเหตุ: fuzzy_match มักจะต้องการให้อักขระเรียงลำดับกัน
-                                // การใช้ fuzzy_match กับคำที่พิมพ์ผิดอาจจะได้คะแนนน้อย หรือ None
                                 if let Some(score) = self.matcher.fuzzy_match(alias_str, query) {
                                     if score > 0 {
                                         let result = SearchResult {
@@ -100,7 +244,7 @@ impl KeywordSearch {
                                             match_type: "fuzzy".to_string(),
                                             score,
                                         };
-                                        if best_match.as_ref().is_none_or(|m| m.score < score) {
+                                        if best_match.as_ref().map_or(true, |m| m.score < score) {
                                             best_match = Some(result);
                                         }
                                     }
@@ -166,9 +310,17 @@ impl KeywordSearch {
     }
 }
 
-/// normalize query: trim, lowercase, remove extra spaces
+/// ปรับแต่งคำค้นหา: นำช่องว่างส่วนเกินออก, เป็นตัวพิมพ์เล็ก
+/// และถอดสระ/วรรณยุกต์ภาษาไทย (Thai Tone-Mark Insensitive Search)
 fn normalize_query(q: &str) -> String {
-    q.trim().to_lowercase()
+    use std::sync::OnceLock;
+    use regex::Regex;
+
+    static THAI_TONE_RE: OnceLock<Regex> = OnceLock::new();
+    let re = THAI_TONE_RE.get_or_init(|| Regex::new(r"[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]").unwrap());
+
+    let lowercased = q.trim().to_lowercase();
+    re.replace_all(&lowercased, "").to_string()
 }
 
 #[cfg(test)]
@@ -259,8 +411,7 @@ mod tests {
     #[test]
     fn test_search_fuzzy_match() {
         let searcher = KeywordSearch::new(make_test_registry());
-        // ใช้คำที่ใกล้เคียง (ตัวอักษรอยู่ในลำดับเดิม)
-        let results = searcher.search("vual", None); // v-i-s-u-a-l
+        let results = searcher.search("vual", None); 
 
         assert!(!results.is_empty());
         assert_eq!(results[0].id, "proj-visual");
@@ -271,11 +422,9 @@ mod tests {
     fn test_search_scoped_by_group() {
         let searcher = KeywordSearch::new(make_test_registry());
 
-        // ค้นหา 'api' ในทุกกลุ่ม ควรเจอ 2 อย่าง
         let all_results = searcher.search("api", None);
         assert!(all_results.len() >= 2);
 
-        // ค้นหา 'api' เฉพาะในกลุ่ม 'skills' ควรเจอแค่อย่างเดียว
         let scoped_results = searcher.search("api", Some("skills"));
         assert_eq!(scoped_results.len(), 1);
         assert_eq!(scoped_results[0].id, "skill-docs");
@@ -291,11 +440,22 @@ mod tests {
         }));
 
         let searcher = KeywordSearch::new(registry);
-        // ค้นหา "visual"
-        // proj-v (exact) vs proj-visual (partial match ของ 'visual-story')
         let results = searcher.search("visual", None);
 
         assert_eq!(results[0].id, "proj-v");
         assert_eq!(results[0].match_type, "exact");
+    }
+
+    #[test]
+    fn test_search_thai_tone_insensitive() {
+        let searcher = KeywordSearch::new(make_test_registry());
+
+        let results_1 = searcher.search("ภาพเรือง", None);
+        let results_2 = searcher.search("ภาพเรื่อง", None);
+
+        assert!(!results_1.is_empty(), "ควรพบผลลัพธ์แม้ไม่ใส่วรรณยุกต์");
+        assert_eq!(results_1[0].id, "proj-visual");
+        assert_eq!(results_1[0].match_type, "exact");
+        assert_eq!(results_2[0].id, "proj-visual");
     }
 }

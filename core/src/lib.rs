@@ -12,7 +12,7 @@ pub use schema::{KeywordGroup, KeywordRegistry, SearchResult};
 pub use search::KeywordSearch;
 pub use validator::Validator;
 
-/// โหลด schema จากไฟล์ JSON (พร้อมตรวจสอบความปลอดภัยเบื้องต้น)
+/// โหลด schema จากไฟล์ JSON หรือ YAML (พร้อมตรวจสอบความปลอดภัยเบื้องต้น)
 pub fn load_registry<P: AsRef<Path>>(path: P) -> Result<KeywordRegistry, ValidatorError> {
     let path = path.as_ref();
 
@@ -32,7 +32,16 @@ pub fn load_registry<P: AsRef<Path>>(path: P) -> Result<KeywordRegistry, Validat
         )
     })?;
 
-    let registry: KeywordRegistry = serde_json::from_str(&content)?;
+    let registry: KeywordRegistry = if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        if ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml") {
+            serde_yaml::from_str(&content).map_err(|e| ValidatorError::FileIo(format!("YAML parsing error: {}", e)))?
+        } else {
+            serde_json::from_str(&content)?
+        }
+    } else {
+        serde_json::from_str(&content)?
+    };
+
     Ok(registry)
 }
 

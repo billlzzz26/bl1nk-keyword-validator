@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-18
+
+### Added
+- **Smart Search (BM25)**: 実装ระบบค้นหาอัจฉริยะที่ใช้หลักการ BM25 เพื่อให้คะแนนความเกี่ยวข้องของผลลัพธ์ ช่วยให้การค้นหาคำสำคัญมีความแม่นยำสูงขึ้น.
+- **Thai Language Optimization**: เพิ่มระบบ **Thai Bigram Tokenizer** และ **Tone-mark Insensitive Search** (ถอดวรรณยุกต์) ทำให้ค้นหาภาษาไทยได้แม้พิมพ์ผิดหรือพิมพ์ไม่ครบ.
+- **YAML Support**: เพิ่มความสามารถในการโหลดข้อมูล Registry จากไฟล์รูปแบบ **YAML** (`.yaml`, `.yml`) เพื่อความสะดวกในการแก้ไขด้วยมือ.
+- **Project Scan Command**: พัฒนาคำสั่ง `Scan` สำหรับการค้นหาและตรวจสอบความถูกต้องของไฟล์ Registry ทั้งโปรเจกต์โดยอัตโนมัติ พร้อมระบบละเว้นไฟล์ (Ignore patterns).
+- **External Config Flag**: เพิ่ม Flag `--config` เพื่อให้ผู้ใช้สามารถนำกฎการตรวจสอบ (Validation Rules) จากไฟล์ภายนอกมาใช้ได้.
+
+### Changed
+- **Modern CLI Architecture**: อัปเกรดระบบ CLI เป็น `clap` v4 และใช้ `anyhow` เพื่อการจัดการข้อผิดพลาด (Error Handling) ที่เป็นมาตรฐานสากล.
+- **Standardized Thai Documentation**: เปลี่ยนคอมเมนต์และเอกสารทางเทคนิคภายในโค้ดทั้งหมดให้เป็นภาษาไทยตามข้อกำหนดของโปรเจกต์หลัก.
+- **Structured Logging**: บูรณาการระบบ Log ด้วย `tracing` และ `tracing-subscriber` แทนการใช้ `println!` แบบเดิม.
+
+### Fixed
+- **Validator Robustness**: แก้ไข Logic การตรวจสอบความถูกต้องให้รองรับ Namespace Isolation ในแต่ละกลุ่มอย่างสมบูรณ์ และเพิ่มการเช็ค Broken Links ใน `relatedIds`.
+
+---
+
 ## [1.1.0] - 2026-04-04
 
 ### Added
