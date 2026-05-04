@@ -173,13 +173,12 @@ fn run() -> Result<()> {
     }
 
     // โหลดข้อมูล Registry จากไฟล์
-    let mut registry = load_registry(&cli.schema)
-        .map_err(|e| anyhow::anyhow!("ไม่สามารถโหลด Registry ได้: {}", e))?;
+    let mut registry = load_registry(&cli.schema).map_err(|e| anyhow::anyhow!("ไม่สามารถโหลด Registry ได้: {}", e))?;
 
     // นำกฎการตรวจสอบเพิ่มเติมมาใช้หากมีการระบุ
     if let Some(config_path) = &cli.config {
-        let custom_registry = load_registry(config_path)
-            .map_err(|e| anyhow::anyhow!("ไม่สามารถโหลดค่ากำหนดเพิ่มเติมได้: {}", e))?;
+        let custom_registry =
+            load_registry(config_path).map_err(|e| anyhow::anyhow!("ไม่สามารถโหลดค่ากำหนดเพิ่มเติมได้: {}", e))?;
         registry.validation = custom_registry.validation;
         info!("🔧 โหลดกฎการตรวจสอบเพิ่มเติมจาก {:?}", config_path);
     }
@@ -225,11 +224,7 @@ fn run() -> Result<()> {
 }
 
 /// สแกนหาไฟล์ Registry ในไดเรกทอรีและตรวจสอบความถูกต้อง
-fn handle_scan(
-    dir: &PathBuf,
-    ignore: Option<String>,
-    config: Option<PathBuf>,
-) -> Result<()> {
+fn handle_scan(dir: &PathBuf, ignore: Option<String>, config: Option<PathBuf>) -> Result<()> {
     info!("🔍 กำลังสแกนไดเรกทอรี: {:?}", dir);
 
     let ignore_patterns: Vec<String> = if let Some(ig) = ignore {
@@ -247,8 +242,7 @@ fn handle_scan(
     // เตรียมกฎการตรวจสอบเพิ่มเติม
     let mut custom_rules = None;
     if let Some(config_path) = config {
-        let custom_registry = load_registry(&config_path)
-            .context("ไม่สามารถโหลดไฟล์ค่ากำหนดสำหรับการสแกน")?;
+        let custom_registry = load_registry(&config_path).context("ไม่สามารถโหลดไฟล์ค่ากำหนดสำหรับการสแกน")?;
         custom_rules = Some(custom_registry.validation);
     }
 
@@ -279,7 +273,7 @@ fn handle_scan(
                 }
 
                 scanned_count += 1;
-                
+
                 let mut registry = match load_registry(&path) {
                     Ok(r) => r,
                     Err(_) => continue, // ข้ามไฟล์ที่ไม่ใช่รูปแบบ Registry
@@ -312,7 +306,7 @@ fn handle_scan(
     info!("\n--- สรุปการสแกน ---");
     info!("ไฟล์ที่พบและสแกน: {}", scanned_count);
     info!("ไฟล์ที่ถูกต้อง: {}", valid_count);
-    
+
     if error_count > 0 {
         anyhow::bail!("พบไฟล์ที่ไม่ถูกต้องทั้งหมด {} ไฟล์", error_count);
     } else {
@@ -358,10 +352,7 @@ fn cmd_validate(
     } else {
         match validator.validate_registry() {
             Ok(_) => {
-                println!(
-                    "{}",
-                    json!({ "valid": true, "message": "ข้อมูลทั้งหมดมีความถูกต้อง" })
-                );
+                println!("{}", json!({ "valid": true, "message": "ข้อมูลทั้งหมดมีความถูกต้อง" }));
             }
             Err(errors) => {
                 println!("{}", json!({ "valid": false, "errors": errors }));
@@ -397,10 +388,7 @@ fn cmd_search(
             for result in results {
                 println!("ID: {}", result.id);
                 println!("Group: {}", result.group_id);
-                println!(
-                    "Match Type: {} (Score: {})",
-                    result.match_type, result.score
-                );
+                println!("Match Type: {} (Score: {})", result.match_type, result.score);
                 println!("Aliases: {}", result.aliases.join(", "));
                 println!("Description: {}", result.description);
                 println!("---");
@@ -419,8 +407,7 @@ fn cmd_add(
 ) -> Result<()> {
     let mut registry = registry.clone();
     let new_entry: Value = if let Some(path) = entry_str.strip_prefix('@') {
-        let content = std::fs::read_to_string(path.trim())
-            .with_context(|| format!("ไม่สามารถอ่านไฟล์: {}", path))?;
+        let content = std::fs::read_to_string(path.trim()).with_context(|| format!("ไม่สามารถอ่านไฟล์: {}", path))?;
         serde_json::from_str(&content).context("ไฟล์ JSON ไม่ถูกต้อง")?
     } else {
         serde_json::from_str(entry_str).context("รูปแบบ JSON ไม่ถูกต้อง")?
@@ -429,26 +416,17 @@ fn cmd_add(
     let validator = Validator::new(registry.clone());
 
     // 1. ตรวจสอบความถูกต้องของข้อมูลใหม่
-    validator.validate_entry(group, &new_entry).map_err(|e| {
-        anyhow::anyhow!(
-            "การตรวจสอบล้มเหลว: {}",
-            serde_json::to_string_pretty(&e).unwrap()
-        )
-    })?;
+    validator
+        .validate_entry(group, &new_entry)
+        .map_err(|e| anyhow::anyhow!("การตรวจสอบล้มเหลว: {}", serde_json::to_string_pretty(&e).unwrap()))?;
 
     // 2. ตรวจสอบชื่อแฝง (Aliases) ที่ซ้ำกัน
     if let Some(aliases) = new_entry.get("aliases").and_then(|v| v.as_array()) {
-        let alias_strings: Vec<String> = aliases
-            .iter()
-            .filter_map(|a| a.as_str().map(String::from))
-            .collect();
+        let alias_strings: Vec<String> = aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect();
 
         let dup_errors = validator.check_duplicate_aliases(group, None, &alias_strings);
         if !dup_errors.is_empty() {
-            anyhow::bail!(
-                "พบชื่อแฝงที่ซ้ำกัน: {}",
-                serde_json::to_string_pretty(&dup_errors).unwrap()
-            );
+            anyhow::bail!("พบชื่อแฝงที่ซ้ำกัน: {}", serde_json::to_string_pretty(&dup_errors).unwrap());
         }
     }
 
@@ -492,11 +470,12 @@ fn cmd_edit(
         .with_context(|| format!("ไม่พบรายการ '{}' ในกลุ่ม '{}'", id, group))?;
 
     // อัปเดตค่า (จัดการประเภทข้อมูลเบื้องต้น: JSON หรือ String)
-    let new_val: Value = if (value.starts_with('[') && value.ends_with(']')) || (value.starts_with('{') && value.ends_with('}')) {
-        serde_json::from_str(value).unwrap_or_else(|_| Value::String(value.to_string()))
-    } else {
-        Value::String(value.to_string())
-    };
+    let new_val: Value =
+        if (value.starts_with('[') && value.ends_with(']')) || (value.starts_with('{') && value.ends_with('}')) {
+            serde_json::from_str(value).unwrap_or_else(|_| Value::String(value.to_string()))
+        } else {
+            Value::String(value.to_string())
+        };
 
     entry[field] = new_val;
 
@@ -511,10 +490,7 @@ fn cmd_edit(
     // ตรวจสอบชื่อแฝงหากมีการแก้ไขฟิลด์ aliases
     if field == "aliases" {
         if let Some(aliases) = entry.get("aliases").and_then(|v| v.as_array()) {
-            let alias_strings: Vec<String> = aliases
-                .iter()
-                .filter_map(|a| a.as_str().map(String::from))
-                .collect();
+            let alias_strings: Vec<String> = aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect();
 
             let dup_errors = validator.check_duplicate_aliases(group, Some(id), &alias_strings);
             if !dup_errors.is_empty() {
@@ -532,11 +508,7 @@ fn cmd_edit(
     Ok(())
 }
 
-fn cmd_show(
-    registry: &bl1nk_keyword_core::KeywordRegistry,
-    id: &str,
-    json_output: bool,
-) -> Result<()> {
+fn cmd_show(registry: &bl1nk_keyword_core::KeywordRegistry, id: &str, json_output: bool) -> Result<()> {
     for group in &registry.groups {
         if let Some(entry) = group
             .entries
@@ -558,11 +530,7 @@ fn cmd_show(
     anyhow::bail!("ไม่พบรายการ '{}' ในกลุ่มใดๆ", id)
 }
 
-fn cmd_list(
-    registry: &bl1nk_keyword_core::KeywordRegistry,
-    group_id: &str,
-    json_output: bool,
-) -> Result<()> {
+fn cmd_list(registry: &bl1nk_keyword_core::KeywordRegistry, group_id: &str, json_output: bool) -> Result<()> {
     let group = registry
         .groups
         .iter()
@@ -585,10 +553,7 @@ fn cmd_list(
     Ok(())
 }
 
-fn cmd_docs_gen(
-    registry: &bl1nk_keyword_core::KeywordRegistry,
-    output: Option<PathBuf>,
-) -> Result<()> {
+fn cmd_docs_gen(registry: &bl1nk_keyword_core::KeywordRegistry, output: Option<PathBuf>) -> Result<()> {
     let markdown = bl1nk_keyword_core::generate_markdown(registry);
 
     match output {

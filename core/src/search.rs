@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use crate::schema::{KeywordRegistry, SearchResult};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use std::collections::HashMap;
 
 /// ตัดคำ (Tokenize) ข้อความโดยรองรับการแบ่งคำด้วยช่องว่างเบื้องต้น และ Thai Bigram สำหรับ BM25
 fn tokenize(text: &str) -> Vec<String> {
@@ -16,7 +16,7 @@ fn tokenize(text: &str) -> Vec<String> {
             for i in 0..chars.len() - 1 {
                 let mut b = String::new();
                 b.push(chars[i]);
-                b.push(chars[i+1]);
+                b.push(chars[i + 1]);
                 tokens.push(b);
             }
         } else if !chars.is_empty() {
@@ -90,11 +90,7 @@ impl Bm25Index {
             total_len as f64 / docs.len() as f64
         };
 
-        Self {
-            docs,
-            doc_freqs,
-            avgdl,
-        }
+        Self { docs, doc_freqs, avgdl }
     }
 
     /// คำนวณคะแนน BM25 สำหรับเอกสารที่ระบุ
@@ -178,14 +174,14 @@ impl KeywordSearch {
                         let doc_id = format!("{}::{}", group.group_id, id);
                         let bm25_score = self.bm25.score(&doc_id, &query_tokens);
                         if bm25_score > 0.1 {
-                             best_match = Some(SearchResult {
-                                 id: id.to_string(),
-                                 group_id: group.group_id.clone(),
-                                 aliases: aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect(),
-                                 description: description.clone(),
-                                 match_type: "smart".to_string(),
-                                 score: (bm25_score * 1000.0) as i64,
-                             });
+                            best_match = Some(SearchResult {
+                                id: id.to_string(),
+                                group_id: group.group_id.clone(),
+                                aliases: aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect(),
+                                description: description.clone(),
+                                match_type: "smart".to_string(),
+                                score: (bm25_score * 1000.0) as i64,
+                            });
                         }
 
                         for alias in aliases {
@@ -199,10 +195,7 @@ impl KeywordSearch {
                                     let result = SearchResult {
                                         id: id.to_string(),
                                         group_id: group.group_id.clone(),
-                                        aliases: aliases
-                                            .iter()
-                                            .filter_map(|a| a.as_str().map(String::from))
-                                            .collect(),
+                                        aliases: aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect(),
                                         description: description.clone(),
                                         match_type: "exact".to_string(),
                                         score: 10000, // คะแนนสูงสุด
@@ -217,10 +210,7 @@ impl KeywordSearch {
                                     let result = SearchResult {
                                         id: id.to_string(),
                                         group_id: group.group_id.clone(),
-                                        aliases: aliases
-                                            .iter()
-                                            .filter_map(|a| a.as_str().map(String::from))
-                                            .collect(),
+                                        aliases: aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect(),
                                         description: description.clone(),
                                         match_type: "partial".to_string(),
                                         score,
@@ -288,10 +278,7 @@ impl KeywordSearch {
                             return Some(SearchResult {
                                 id: entry_id.to_string(),
                                 group_id: group.group_id.clone(),
-                                aliases: aliases
-                                    .iter()
-                                    .filter_map(|a| a.as_str().map(String::from))
-                                    .collect(),
+                                aliases: aliases.iter().filter_map(|a| a.as_str().map(String::from)).collect(),
                                 description,
                                 match_type: "exact".to_string(),
                                 score: 10000,
@@ -313,8 +300,8 @@ impl KeywordSearch {
 /// ปรับแต่งคำค้นหา: นำช่องว่างส่วนเกินออก, เป็นตัวพิมพ์เล็ก
 /// และถอดสระ/วรรณยุกต์ภาษาไทย (Thai Tone-Mark Insensitive Search)
 fn normalize_query(q: &str) -> String {
-    use std::sync::OnceLock;
     use regex::Regex;
+    use std::sync::OnceLock;
 
     static THAI_TONE_RE: OnceLock<Regex> = OnceLock::new();
     let re = THAI_TONE_RE.get_or_init(|| Regex::new(r"[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]").unwrap());
@@ -327,8 +314,7 @@ fn normalize_query(q: &str) -> String {
 mod tests {
     use super::*;
     use crate::schema::{
-        CustomFieldConfig, KeywordGroup, KeywordRegistry, Metadata, ValidationConfig,
-        ValidationRules,
+        CustomFieldConfig, KeywordGroup, KeywordRegistry, Metadata, ValidationConfig, ValidationRules,
     };
     use serde_json::json;
     use std::collections::HashMap;
@@ -411,7 +397,7 @@ mod tests {
     #[test]
     fn test_search_fuzzy_match() {
         let searcher = KeywordSearch::new(make_test_registry());
-        let results = searcher.search("vual", None); 
+        let results = searcher.search("vual", None);
 
         assert!(!results.is_empty());
         assert_eq!(results[0].id, "proj-visual");
