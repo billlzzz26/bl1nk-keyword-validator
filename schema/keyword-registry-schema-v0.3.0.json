@@ -1,0 +1,736 @@
+{
+  "version": "0.3.0",
+  "metadata": {
+    "lastUpdated": "2026-05-29T05:26:00+07:00",
+    "description": "Advanced keyword registry with line detection, FTS5, and Thai-English mapping",
+    "owner": "อาจารย์",
+    "features": [
+      "line-number-detection",
+      "text-search",
+      "fts5-full-text-search",
+      "thai-english-mapping",
+      "bidirectional-search"
+    ]
+  },
+
+  "languageMapping": {
+    "enabled": true,
+    "description": "Bidirectional Thai-English keyword mapping system",
+    "mappingStrategies": [
+      {
+        "strategy": "exact",
+        "description": "Direct translation mapping",
+        "example": {
+          "thai": "โปรแกรมเมอร์",
+          "english": "programmer",
+          "confidence": 1.0
+        }
+      },
+      {
+        "strategy": "phonetic",
+        "description": "Phonetic-based matching for transliteration",
+        "example": {
+          "thai": "เอพีไอ",
+          "english": "API",
+          "confidence": 0.95
+        }
+      },
+      {
+        "strategy": "semantic",
+        "description": "Semantic equivalence mapping",
+        "example": {
+          "thai": "ทักษะ",
+          "english": "skill",
+          "confidence": 0.9
+        }
+      }
+    ],
+    "thaiEnglishDictionary": [
+      {
+        "id": "work-mapping",
+        "thai": "งาน",
+        "english": "work",
+        "alternates": {
+          "thai": ["อาชีพ", "ตำแหน่ง"],
+          "english": ["job", "occupation", "position"]
+        },
+        "confidence": 1.0
+      },
+      {
+        "id": "person-mapping",
+        "thai": "บุคคล",
+        "english": "person",
+        "alternates": {
+          "thai": ["คน", "บุคลากร"],
+          "english": ["individual", "member", "contact"]
+        },
+        "confidence": 1.0
+      },
+      {
+        "id": "tool-mapping",
+        "thai": "เครื่องมือ",
+        "english": "tool",
+        "alternates": {
+          "thai": ["อุปกรณ์", "ซอฟต์แวร์"],
+          "english": ["utility", "software", "application"]
+        },
+        "confidence": 1.0
+      },
+      {
+        "id": "project-mapping",
+        "thai": "โปรเจกต์",
+        "english": "project",
+        "alternates": {
+          "thai": ["โครงการ", "ปัญหา"],
+          "english": ["initiative", "task", "assignment"]
+        },
+        "confidence": 0.95
+      },
+      {
+        "id": "framework-mapping",
+        "thai": "เฟรมเวิร์ก",
+        "english": "framework",
+        "alternates": {
+          "thai": ["โครงสร้าง"],
+          "english": ["structure", "architecture"]
+        },
+        "confidence": 0.95
+      },
+      {
+        "id": "library-mapping",
+        "thai": "ไลบรารี่",
+        "english": "library",
+        "alternates": {
+          "thai": ["ห้องสมุด", "แพคเกจ"],
+          "english": ["package", "module"]
+        },
+        "confidence": 0.95
+      }
+    ]
+  },
+
+  "detectionSystem": {
+    "enabled": true,
+    "description": "Multi-layer detection system for keywords with source tracking",
+    
+    "lineNumberDetection": {
+      "enabled": true,
+      "description": "Track exact location of keywords in source files",
+      "metadata": {
+        "filePath": {
+          "type": "string",
+          "description": "Source file path"
+        },
+        "lineNumber": {
+          "type": "integer",
+          "description": "Line number where keyword appears (1-indexed)"
+        },
+        "columnNumber": {
+          "type": "integer",
+          "description": "Column position (0-indexed)"
+        },
+        "lineContent": {
+          "type": "string",
+          "description": "Full line content"
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "before": {
+              "type": "array",
+              "itemType": "string",
+              "description": "Previous 2 lines"
+            },
+            "after": {
+              "type": "array",
+              "itemType": "string",
+              "description": "Next 2 lines"
+            }
+          }
+        }
+      },
+      "example": {
+        "filePath": "src/components/Header.tsx",
+        "lineNumber": 42,
+        "columnNumber": 15,
+        "lineContent": "const developer = new FullStackDeveloper();",
+        "context": {
+          "before": [
+            "// Initialize developer",
+            ""
+          ],
+          "after": [
+            "developer.initialize();",
+            "return developer;"
+          ]
+        }
+      }
+    },
+
+    "textSearch": {
+      "enabled": true,
+      "description": "Multi-mode text search with language support",
+      "modes": [
+        {
+          "mode": "exact",
+          "description": "Exact string matching",
+          "caseSensitive": false,
+          "example": {
+            "query": "full-stack-developer",
+            "matches": ["full-stack-developer"]
+          }
+        },
+        {
+          "mode": "partial",
+          "description": "Substring matching",
+          "caseSensitive": false,
+          "example": {
+            "query": "stack",
+            "matches": ["full-stack-developer", "stack-engineer"]
+          }
+        },
+        {
+          "mode": "fuzzy",
+          "description": "Fuzzy matching with typo tolerance",
+          "maxDistance": 2,
+          "example": {
+            "query": "ful-stak",
+            "matches": ["full-stack-developer"]
+          }
+        },
+        {
+          "mode": "regex",
+          "description": "Regular expression matching",
+          "example": {
+            "query": "^full-.*-developer$",
+            "matches": ["full-stack-developer"]
+          }
+        }
+      ],
+      "languageSupport": {
+        "thai": {
+          "enabled": true,
+          "tokenizer": "thai-tokenizer",
+          "example": {
+            "query": "โปรแกรมเมอร์",
+            "searchIn": ["aliases", "description"]
+          }
+        },
+        "english": {
+          "enabled": true,
+          "tokenizer": "english-tokenizer",
+          "example": {
+            "query": "programmer",
+            "searchIn": ["aliases", "description"]
+          }
+        },
+        "mixed": {
+          "enabled": true,
+          "description": "Support mixed Thai-English queries",
+          "example": {
+            "query": "full-stack โปรแกรมเมอร์",
+            "strategy": "split-and-merge"
+          }
+        }
+      }
+    },
+
+    "fts5Search": {
+      "enabled": true,
+      "description": "Full-Text Search 5 (SQLite FTS5) integration",
+      "indexedFields": [
+        "id",
+        "aliases",
+        "description",
+        "tags",
+        "category"
+      ],
+      "features": [
+        {
+          "feature": "tokenization",
+          "description": "Automatic word tokenization",
+          "languages": ["english", "thai"]
+        },
+        {
+          "feature": "stemming",
+          "description": "Word stemming for better matching",
+          "example": {
+            "query": "develop",
+            "matches": ["developer", "development", "developing"]
+          }
+        },
+        {
+          "feature": "phraseSearch",
+          "description": "Exact phrase matching with quotes",
+          "example": {
+            "query": "\"full stack developer\"",
+            "matches": ["full stack developer", "full-stack-developer"]
+          }
+        },
+        {
+          "feature": "booleanOperators",
+          "description": "AND, OR, NOT operators",
+          "examples": [
+            {
+              "query": "developer AND frontend",
+              "description": "Both terms must be present"
+            },
+            {
+              "query": "developer OR engineer",
+              "description": "Either term can be present"
+            },
+            {
+              "query": "developer NOT backend",
+              "description": "Must have developer but not backend"
+            }
+          ]
+        },
+        {
+          "feature": "proximity",
+          "description": "Words within N distance",
+          "example": {
+            "query": "full NEAR/2 developer",
+            "description": "Words within 2 positions"
+          }
+        }
+      ],
+      "indexSchema": {
+        "tableName": "fts5_keywords",
+        "virtualTableDefinition": "CREATE VIRTUAL TABLE fts5_keywords USING fts5(id, aliases, description, tags, category, tokenize = 'porter unicode61')",
+        "triggers": [
+          {
+            "event": "INSERT",
+            "action": "Update FTS5 index when new entry added"
+          },
+          {
+            "event": "UPDATE",
+            "action": "Update FTS5 index when entry modified"
+          },
+          {
+            "event": "DELETE",
+            "action": "Remove from FTS5 index when entry deleted"
+          }
+        ]
+      }
+    }
+  },
+
+  "searchEngine": {
+    "enabled": true,
+    "description": "Unified search engine combining all detection methods",
+    
+    "queryProcessor": {
+      "steps": [
+        {
+          "step": 1,
+          "name": "languageDetection",
+          "description": "Detect input language (Thai/English/Mixed)"
+        },
+        {
+          "step": 2,
+          "name": "normalization",
+          "description": "Normalize query (lowercase, remove accents, etc.)"
+        },
+        {
+          "step": 3,
+          "name": "tokenization",
+          "description": "Split query into tokens"
+        },
+        {
+          "step": 4,
+          "name": "languageMapping",
+          "description": "Map Thai↔English using dictionary"
+        },
+        {
+          "step": 5,
+          "name": "indexSelection",
+          "description": "Choose appropriate search index"
+        },
+        {
+          "step": 6,
+          "name": "queryExecution",
+          "description": "Execute search on selected index"
+        },
+        {
+          "step": 7,
+          "name": "resultMerging",
+          "description": "Merge results from multiple indexes"
+        },
+        {
+          "step": 8,
+          "name": "ranking",
+          "description": "Rank results by relevance score"
+        }
+      ]
+    },
+
+    "searchMethods": [
+      {
+        "method": "byKeyword",
+        "description": "Search by exact keyword ID",
+        "example": {
+          "query": "full-stack-developer",
+          "returns": "Single entry with line location"
+        }
+      },
+      {
+        "method": "byAlias",
+        "description": "Search by alias with language mapping",
+        "example": {
+          "query": "full-stack",
+          "language": "english",
+          "returns": "All entries with matching aliases"
+        }
+      },
+      {
+        "method": "byLineNumber",
+        "description": "Search by file and line number",
+        "example": {
+          "filePath": "src/components/Header.tsx",
+          "lineNumber": 42,
+          "returns": "Keywords detected at that location"
+        }
+      },
+      {
+        "method": "byTextContent",
+        "description": "Full-text search in descriptions",
+        "example": {
+          "query": "workflow context-linking",
+          "mode": "fts5",
+          "returns": "Ranked results by relevance"
+        }
+      },
+      {
+        "method": "byClassification",
+        "description": "Search by classification type",
+        "example": {
+          "classification": "work",
+          "query": "developer",
+          "returns": "All work-related keywords matching query"
+        }
+      },
+      {
+        "method": "byLanguage",
+        "description": "Search with language preference",
+        "example": {
+          "query": "programmer",
+          "language": "thai",
+          "returns": "Results with Thai aliases prioritized"
+        }
+      },
+      {
+        "method": "byBidirectional",
+        "description": "Search in both Thai and English",
+        "example": {
+          "query": "developer",
+          "returns": [
+            {
+              "id": "full-stack-developer",
+              "matchedAlias": "developer",
+              "language": "english"
+            },
+            {
+              "id": "full-stack-developer",
+              "matchedAlias": "โปรแกรมเมอร์",
+              "language": "thai"
+            }
+          ]
+        }
+      }
+    ],
+
+    "resultFormat": {
+      "structure": {
+        "matchId": "string",
+        "groupId": "string",
+        "classification": "string",
+        "matchedText": "string",
+        "matchType": "enum[exact, partial, fuzzy, fts5, lineNumber]",
+        "relevanceScore": "number (0-1)",
+        "language": "enum[thai, english, mixed]",
+        "location": {
+          "filePath": "string",
+          "lineNumber": "integer",
+          "columnNumber": "integer",
+          "lineContent": "string"
+        },
+        "context": {
+          "before": "array[string]",
+          "after": "array[string]"
+        },
+        "metadata": {
+          "aliases": "array[string]",
+          "description": "string",
+          "tags": "array[string]"
+        }
+      },
+      "example": {
+        "matchId": "full-stack-developer",
+        "groupId": "work",
+        "classification": "work",
+        "matchedText": "full-stack-developer",
+        "matchType": "exact",
+        "relevanceScore": 1.0,
+        "language": "english",
+        "location": {
+          "filePath": "src/components/Header.tsx",
+          "lineNumber": 42,
+          "columnNumber": 15,
+          "lineContent": "const developer = new FullStackDeveloper();"
+        },
+        "context": {
+          "before": [
+            "// Initialize developer",
+            ""
+          ],
+          "after": [
+            "developer.initialize();",
+            "return developer;"
+          ]
+        },
+        "metadata": {
+          "aliases": [
+            "full-stack-dev",
+            "full stack engineer",
+            "โปรแกรมเมอร์เต็มสแต็ก"
+          ],
+          "description": "Developer skilled in both frontend and backend development",
+          "tags": ["frontend", "backend", "database", "api"]
+        }
+      }
+    }
+  },
+
+  "indexManagement": {
+    "enabled": true,
+    "description": "Multi-index management system",
+    
+    "indexes": [
+      {
+        "indexId": "primary-id-index",
+        "type": "hash",
+        "indexedField": "id",
+        "description": "Primary key index for O(1) lookup",
+        "language": "language-agnostic"
+      },
+      {
+        "indexId": "alias-index-english",
+        "type": "trie",
+        "indexedField": "aliases",
+        "description": "English alias index for prefix matching",
+        "language": "english"
+      },
+      {
+        "indexId": "alias-index-thai",
+        "type": "trie",
+        "indexedField": "aliases",
+        "description": "Thai alias index for prefix matching",
+        "language": "thai"
+      },
+      {
+        "indexId": "classification-index",
+        "type": "hash",
+        "indexedField": "classificationTag",
+        "description": "Classification grouping index",
+        "language": "language-agnostic"
+      },
+      {
+        "indexId": "fts5-index",
+        "type": "fts5",
+        "indexedFields": ["id", "aliases", "description", "tags", "category"],
+        "description": "Full-text search index",
+        "language": "multilingual"
+      },
+      {
+        "indexId": "line-number-index",
+        "type": "btree",
+        "indexedFields": ["filePath", "lineNumber"],
+        "description": "Location-based index for line detection",
+        "language": "language-agnostic"
+      },
+      {
+        "indexId": "thai-english-mapping-index",
+        "type": "hash",
+        "indexedFields": ["thai", "english"],
+        "description": "Bidirectional language mapping index",
+        "language": "multilingual"
+      }
+    ],
+
+    "indexMaintenance": {
+      "rebuildTriggers": [
+        "on-bulk-insert",
+        "on-bulk-update",
+        "on-daily-schedule",
+        "on-manual-request"
+      ],
+      "updateStrategy": "incremental",
+      "cacheStrategy": "lru-cache-with-ttl"
+    }
+  },
+
+  "validation": {
+    "rules": {
+      "aliasMinLength": 2,
+      "aliasMaxLength": 50,
+      "descriptionMinLength": 10,
+      "descriptionMaxLength": 255,
+      "customFieldPerEntry": 1,
+      "requiredBaseFields": [
+        "id",
+        "aliases",
+        "type",
+        "description"
+      ]
+    },
+    "detectionValidation": {
+      "lineNumberValidation": {
+        "enabled": true,
+        "rules": [
+          {
+            "rule": "VALID_LINE_NUMBER",
+            "description": "Line number must be positive integer"
+          },
+          {
+            "rule": "VALID_FILE_PATH",
+            "description": "File path must be valid and accessible"
+          },
+          {
+            "rule": "VALID_COLUMN_NUMBER",
+            "description": "Column number must be within line length"
+          }
+        ]
+      },
+      "textSearchValidation": {
+        "enabled": true,
+        "rules": [
+          {
+            "rule": "VALID_SEARCH_MODE",
+            "description": "Search mode must be one of: exact, partial, fuzzy, regex"
+          },
+          {
+            "rule": "VALID_LANGUAGE",
+            "description": "Language must be: thai, english, or mixed"
+          }
+        ]
+      },
+      "fts5Validation": {
+        "enabled": true,
+        "rules": [
+          {
+            "rule": "VALID_FTS5_SYNTAX",
+            "description": "FTS5 query must follow SQLite FTS5 syntax"
+          },
+          {
+            "rule": "INDEXED_FIELD_EXISTS",
+            "description": "Searched field must be indexed in FTS5"
+          }
+        ]
+      },
+      "languageMappingValidation": {
+        "enabled": true,
+        "rules": [
+          {
+            "rule": "BIDIRECTIONAL_MAPPING",
+            "description": "Thai-English mapping must be bidirectional"
+          },
+          {
+            "rule": "CONFIDENCE_SCORE",
+            "description": "Confidence score must be between 0 and 1"
+          }
+        ]
+      }
+    },
+    "errorMessages": {
+      "INVALID_LINE_NUMBER": "Line number must be positive integer, got {value}",
+      "INVALID_FILE_PATH": "File path '{path}' is not valid or accessible",
+      "INVALID_COLUMN_NUMBER": "Column {column} exceeds line length {length}",
+      "INVALID_SEARCH_MODE": "Search mode '{mode}' not supported. Use: exact, partial, fuzzy, regex",
+      "INVALID_LANGUAGE": "Language '{lang}' not supported. Use: thai, english, mixed",
+      "INVALID_FTS5_SYNTAX": "FTS5 query syntax error: {error}",
+      "INDEXED_FIELD_NOT_FOUND": "Field '{field}' is not indexed in FTS5",
+      "MAPPING_NOT_FOUND": "No mapping found for '{term}' in language '{language}'",
+      "CONFIDENCE_OUT_OF_RANGE": "Confidence score must be 0-1, got {value}",
+      "BIDIRECTIONAL_MISMATCH": "Mapping is not bidirectional: {thai} ↔ {english}"
+    }
+  },
+
+  "examples": {
+    "searchQueries": [
+      {
+        "description": "Search by exact keyword ID",
+        "query": {
+          "method": "byKeyword",
+          "keyword": "full-stack-developer"
+        },
+        "result": {
+          "matchId": "full-stack-developer",
+          "location": {
+            "filePath": "src/components/Header.tsx",
+            "lineNumber": 42
+          }
+        }
+      },
+      {
+        "description": "Search by Thai alias",
+        "query": {
+          "method": "byAlias",
+          "alias": "โปรแกรมเมอร์",
+          "language": "thai"
+        },
+        "result": [
+          {
+            "matchId": "full-stack-developer",
+            "matchedAlias": "โปรแกรมเมอร์เต็มสแต็ก"
+          }
+        ]
+      },
+      {
+        "description": "Search by line number",
+        "query": {
+          "method": "byLineNumber",
+          "filePath": "src/components/Header.tsx",
+          "lineNumber": 42
+        },
+        "result": {
+          "keywords": ["full-stack-developer"],
+          "lineContent": "const developer = new FullStackDeveloper();"
+        }
+      },
+      {
+        "description": "Full-text search with FTS5",
+        "query": {
+          "method": "byTextContent",
+          "query": "developer AND frontend",
+          "mode": "fts5"
+        },
+        "result": [
+          {
+            "matchId": "full-stack-developer",
+            "relevanceScore": 0.95
+          }
+        ]
+      },
+      {
+        "description": "Bidirectional language search",
+        "query": {
+          "method": "byBidirectional",
+          "query": "developer",
+          "searchBoth": true
+        },
+        "result": [
+          {
+            "matchId": "full-stack-developer",
+            "matchedAlias": "developer",
+            "language": "english"
+          },
+          {
+            "matchId": "full-stack-developer",
+            "matchedAlias": "โปรแกรมเมอร์",
+            "language": "thai"
+          }
+        ]
+      }
+    ]
+  }
+}

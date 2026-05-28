@@ -1,0 +1,837 @@
+{
+  "version": "0.2.0",
+  "metadata": {
+    "lastUpdated": "2026-05-29T05:23:00+07:00",
+    "description": "Enhanced keyword registry with 14 semantic classification groups",
+    "owner": "อาจารย์",
+    "totalGroups": 14,
+    "classificationTypes": [
+      "work",
+      "person",
+      "tool",
+      "interest",
+      "project",
+      "location",
+      "verb",
+      "adverb",
+      "animal",
+      "language",
+      "name",
+      "brand",
+      "colour",
+      "library",
+      "framework"
+    ]
+  },
+
+  "groups": [
+    {
+      "groupId": "work",
+      "groupName": "งาน/อาชีพ",
+      "description": "Namespace for job titles, professional roles, positions, and occupations",
+      "classificationTag": "work",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "Unique identifier within the work namespace"
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true,
+          "description": "Search aliases (Thai, English, and variants)"
+        },
+        "category": {
+          "type": "enum",
+          "values": [
+            "technical",
+            "management",
+            "creative",
+            "administrative",
+            "support",
+            "specialist"
+          ],
+          "required": true,
+          "description": "Job category"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true,
+          "description": "Job description"
+        },
+        "level": {
+          "type": "enum",
+          "values": [
+            "entry",
+            "junior",
+            "mid",
+            "senior",
+            "lead",
+            "executive"
+          ],
+          "required": false,
+          "description": "Career level"
+        },
+        "tags": {
+          "type": "array",
+          "itemType": "string",
+          "required": false,
+          "description": "Related skills or domains"
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true,
+        "description": "Allows 1 additional field (e.g., salaryRange, requiredSkills)"
+      },
+      "entries": [
+        {
+          "id": "full-stack-developer",
+          "aliases": [
+            "full-stack-dev",
+            "full stack engineer",
+            "โปรแกรมเมอร์เต็มสแต็ก",
+            "developer"
+          ],
+          "category": "technical",
+          "level": "mid",
+          "description": "Developer skilled in both frontend and backend development",
+          "tags": ["frontend", "backend", "database", "api"]
+        }
+      ]
+    },
+
+    {
+      "groupId": "person",
+      "groupName": "บุคคล",
+      "description": "Namespace for individual names, team members, and contacts",
+      "classificationTag": "person",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true,
+          "description": "Name variants and nicknames"
+        },
+        "firstName": {
+          "type": "string",
+          "required": true,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true,
+          "description": "Brief bio or role"
+        },
+        "role": {
+          "type": "string",
+          "required": false,
+          "description": "Current role or position"
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true,
+        "description": "Allows 1 field (e.g., email, contact, department)"
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "tool",
+      "groupName": "เครื่องมือ",
+      "description": "Namespace for software tools, utilities, and applications",
+      "classificationTag": "tool",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true,
+          "description": "Tool name variants"
+        },
+        "category": {
+          "type": "enum",
+          "values": [
+            "development",
+            "devops",
+            "design",
+            "productivity",
+            "communication",
+            "testing",
+            "monitoring",
+            "deployment"
+          ],
+          "required": true,
+          "description": "Tool category"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true,
+          "description": "Tool description"
+        },
+        "website": {
+          "type": "string",
+          "pattern": "^https?://",
+          "required": false,
+          "description": "Official website"
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true,
+        "description": "Allows 1 field (e.g., pricing, license)"
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "interest",
+      "groupName": "ความสนใจ",
+      "description": "Namespace for topics, hobbies, and subject areas",
+      "classificationTag": "interest",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "category": {
+          "type": "enum",
+          "values": [
+            "technology",
+            "arts",
+            "science",
+            "sports",
+            "education",
+            "entertainment",
+            "business",
+            "lifestyle"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "project",
+      "groupName": "โปรเจกต์",
+      "description": "Namespace for software projects, products, and repositories",
+      "classificationTag": "project",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "type": {
+          "type": "enum",
+          "values": ["app", "library", "skill", "plugin", "tool", "template"],
+          "required": true
+        },
+        "status": {
+          "type": "enum",
+          "values": ["active", "archived", "planning", "maintenance"],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^https://",
+          "required": false
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": [
+        {
+          "id": "visual-story-extension",
+          "aliases": [
+            "visual-story",
+            "ภาพเรื่อง",
+            "story-extension"
+          ],
+          "type": "plugin",
+          "status": "active",
+          "description": "Workflow and context-linking architecture for story visualization",
+          "repository": "https://github.com/dollawatt/bl1nk-visual-story-extension"
+        }
+      ]
+    },
+
+    {
+      "groupId": "location",
+      "groupName": "สถานที่",
+      "description": "Namespace for geographic places, cities, countries, and regions",
+      "classificationTag": "location",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "type": {
+          "type": "enum",
+          "values": [
+            "country",
+            "city",
+            "region",
+            "area",
+            "landmark",
+            "building"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        },
+        "coordinates": {
+          "type": "object",
+          "properties": {
+            "latitude": "number",
+            "longitude": "number"
+          },
+          "required": false
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "verb",
+      "groupName": "กริยา",
+      "description": "Namespace for action words, operations, and processes",
+      "classificationTag": "verb",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "category": {
+          "type": "enum",
+          "values": [
+            "create",
+            "read",
+            "update",
+            "delete",
+            "process",
+            "analyze",
+            "deploy",
+            "manage"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "adverb",
+      "groupName": "กริยาวิเศษณ์",
+      "description": "Namespace for modifiers, qualifiers, and descriptors",
+      "classificationTag": "adverb",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "type": {
+          "type": "enum",
+          "values": [
+            "manner",
+            "time",
+            "place",
+            "frequency",
+            "degree",
+            "certainty"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "animal",
+      "groupName": "สัตว์",
+      "description": "Namespace for animal species, creatures, and wildlife",
+      "classificationTag": "animal",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "category": {
+          "type": "enum",
+          "values": [
+            "mammal",
+            "bird",
+            "reptile",
+            "amphibian",
+            "fish",
+            "insect",
+            "other"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "language",
+      "groupName": "ภาษา",
+      "description": "Namespace for programming and natural languages",
+      "classificationTag": "language",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "type": {
+          "type": "enum",
+          "values": [
+            "programming",
+            "markup",
+            "stylesheet",
+            "natural",
+            "query",
+            "scripting"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "name",
+      "groupName": "ชื่อ",
+      "description": "Namespace for identifiers, labels, titles, and designations",
+      "classificationTag": "name",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "type": {
+          "type": "enum",
+          "values": [
+            "identifier",
+            "label",
+            "title",
+            "designation",
+            "codename"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "brand",
+      "groupName": "แบรนด์",
+      "description": "Namespace for companies, trademarks, and organizations",
+      "classificationTag": "brand",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "type": {
+          "type": "enum",
+          "values": [
+            "company",
+            "product",
+            "trademark",
+            "organization",
+            "service"
+          ],
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        },
+        "website": {
+          "type": "string",
+          "pattern": "^https?://",
+          "required": false
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "colour",
+      "groupName": "สี",
+      "description": "Namespace for colors, hues, shades, and color palettes",
+      "classificationTag": "colour",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "hexCode": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "required": true,
+          "description": "Hex color code"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true,
+        "description": "Allows RGB or HSL values"
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "library",
+      "groupName": "ไลบรารี่",
+      "description": "Namespace for code libraries, packages, and modules",
+      "classificationTag": "library",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "language": {
+          "type": "string",
+          "required": true,
+          "description": "Primary programming language"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^https://",
+          "required": false
+        },
+        "npmUrl": {
+          "type": "string",
+          "pattern": "^https://www.npmjs.com/",
+          "required": false
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    },
+
+    {
+      "groupId": "framework",
+      "groupName": "เฟรมเวิร์ก",
+      "description": "Namespace for development frameworks and architectural patterns",
+      "classificationTag": "framework",
+      "baseFieldsSchema": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "required": true
+        },
+        "aliases": {
+          "type": "array",
+          "itemType": "string",
+          "required": true
+        },
+        "type": {
+          "type": "enum",
+          "values": [
+            "web",
+            "mobile",
+            "backend",
+            "frontend",
+            "fullstack",
+            "testing",
+            "architecture"
+          ],
+          "required": true
+        },
+        "language": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "required": true
+        },
+        "website": {
+          "type": "string",
+          "pattern": "^https?://",
+          "required": false
+        }
+      },
+      "customFieldAllowed": {
+        "enabled": true,
+        "maxOne": true
+      },
+      "entries": []
+    }
+  ],
+
+  "validation": {
+    "rules": {
+      "aliasMinLength": 2,
+      "aliasMaxLength": 50,
+      "descriptionMinLength": 10,
+      "descriptionMaxLength": 255,
+      "customFieldPerEntry": 1,
+      "requiredBaseFields": [
+        "id",
+        "aliases",
+        "type",
+        "description"
+      ]
+    },
+    "classificationValidation": {
+      "enabled": true,
+      "rules": [
+        {
+          "rule": "VALID_CLASSIFICATION_TAG",
+          "description": "Entry must belong to a valid classification group",
+          "validTags": [
+            "work",
+            "person",
+            "tool",
+            "interest",
+            "project",
+            "location",
+            "verb",
+            "adverb",
+            "animal",
+            "language",
+            "name",
+            "brand",
+            "colour",
+            "library",
+            "framework"
+          ]
+        },
+        {
+          "rule": "TYPE_ENUM_MATCH",
+          "description": "Type field must match the group's allowed enum values"
+        },
+        {
+          "rule": "GROUP_CONSISTENCY",
+          "description": "Entry properties must be consistent with group schema"
+        }
+      ]
+    },
+    "errorMessages": {
+      "INVALID_ID": "ID must match pattern for the specific group namespace",
+      "DUPLICATE_ID": "ID already exists in this group namespace",
+      "ALIAS_TOO_SHORT": "Alias must be at least 2 characters",
+      "ALIAS_TOO_LONG": "Alias must not exceed 50 characters",
+      "MISSING_REQUIRED_FIELD": "Required field missing: {field}",
+      "INVALID_ENUM": "Value must be one of: {values}",
+      "CUSTOM_FIELD_MISMATCH": "Custom field type does not match schema definition",
+      "DESCRIPTION_TOO_LONG": "Description exceeds 255 characters",
+      "DUPLICATE_ALIAS": "This alias is already used in namespace: {group}",
+      "INVALID_TYPE": "Field type mismatch. Expected {type}, got {actual}",
+      "INVALID_PATTERN": "Value does not match the required pattern for this field",
+      "BROKEN_RELATIONSHIP": "Referenced ID does not exist in the registry",
+      "INVALID_CLASSIFICATION_TAG": "Classification tag '{tag}' is not recognized",
+      "TYPE_MISMATCH_WITH_GROUP": "Type '{type}' is not valid for group '{group}'",
+      "MISSING_CLASSIFICATION_TAG": "Entry must specify a valid classification tag"
+    }
+  },
+
+  "searchIndex": {
+    "enabled": true,
+    "description": "Enables fast keyword search across all groups by classification",
+    "indexedFields": [
+      "id",
+      "aliases",
+      "classificationTag",
+      "description"
+    ],
+    "searchStrategies": [
+      {
+        "strategy": "byClassification",
+        "description": "Search keywords by classification type (work, person, tool, etc.)"
+      },
+      {
+        "strategy": "byAlias",
+        "description": "Search by exact or fuzzy alias matching"
+      },
+      {
+        "strategy": "byGroup",
+        "description": "Search within specific group namespace"
+      },
+      {
+        "strategy": "crossGroup",
+        "description": "Search across multiple groups by classification"
+      }
+    ]
+  }
+}
