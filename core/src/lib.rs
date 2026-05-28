@@ -12,42 +12,39 @@ pub use schema::{KeywordGroup, KeywordRegistry, SearchResult};
 pub use search::KeywordSearch;
 pub use validator::Validator;
 
-/// โหลด schema จากไฟล์ JSON (พร้อมตรวจสอบความปลอดภัยเบื้องต้น)
+/// โหลด schema จากไฟล์ JSON หรือ YAML (พร้อมตรวจสอบความปลอดภัยเบื้องต้น)
 pub fn load_registry<P: AsRef<Path>>(path: P) -> Result<KeywordRegistry, ValidatorError> {
     let path = path.as_ref();
 
     // ป้องกัน Path Traversal เบื้องต้น
-    if path
-        .components()
-        .any(|c| matches!(c, std::path::Component::ParentDir))
-    {
+    if path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
         return Err(ValidatorError::FileIo(
             "Access denied: Illegal path components".to_string(),
         ));
     }
 
-    let content = fs::read_to_string(path).map_err(|_| {
-        ValidatorError::FileIo(
-            "Failed to read registry file: Access denied or not found".to_string(),
-        )
-    })?;
+    let content = fs::read_to_string(path)
+        .map_err(|_| ValidatorError::FileIo("Failed to read registry file: Access denied or not found".to_string()))?;
 
-    let registry: KeywordRegistry = serde_json::from_str(&content)?;
+    let registry: KeywordRegistry = if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        if ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml") {
+            serde_yaml::from_str(&content).map_err(|e| ValidatorError::FileIo(format!("YAML parsing error: {}", e)))?
+        } else {
+            serde_json::from_str(&content)?
+        }
+    } else {
+        serde_json::from_str(&content)?
+    };
+
     Ok(registry)
 }
 
 /// save registry ลงไฟล์ JSON (พร้อมตรวจสอบความปลอดภัยเบื้องต้น)
-pub fn save_registry<P: AsRef<Path>>(
-    path: P,
-    registry: &KeywordRegistry,
-) -> Result<(), ValidatorError> {
+pub fn save_registry<P: AsRef<Path>>(path: P, registry: &KeywordRegistry) -> Result<(), ValidatorError> {
     let path = path.as_ref();
 
     // ป้องกัน Path Traversal เบื้องต้น
-    if path
-        .components()
-        .any(|c| matches!(c, std::path::Component::ParentDir))
-    {
+    if path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
         return Err(ValidatorError::FileIo(
             "Access denied: Illegal path components".to_string(),
         ));
@@ -55,9 +52,8 @@ pub fn save_registry<P: AsRef<Path>>(
 
     let json = serde_json::to_string_pretty(registry).map_err(ValidatorError::JsonError)?;
 
-    fs::write(path, json).map_err(|_| {
-        ValidatorError::FileIo("Failed to write registry file: Access denied".to_string())
-    })?;
+    fs::write(path, json)
+        .map_err(|_| ValidatorError::FileIo("Failed to write registry file: Access denied".to_string()))?;
 
     Ok(())
 }
@@ -68,10 +64,7 @@ pub fn generate_markdown(registry: &KeywordRegistry) -> String {
 
     md.push_str(&format!("# Keyword Registry (v{})\n\n", registry.version));
     md.push_str(&format!("{}\n\n", registry.metadata.description));
-    md.push_str(&format!(
-        "**Last Updated:** {}\n",
-        registry.metadata.last_updated
-    ));
+    md.push_str(&format!("**Last Updated:** {}\n", registry.metadata.last_updated));
     md.push_str(&format!("**Owner:** {}\n\n", registry.metadata.owner));
 
     md.push_str("## Table of Contents\n\n");
@@ -90,20 +83,12 @@ pub fn generate_markdown(registry: &KeywordRegistry) -> String {
 
         for entry in &group.entries {
             let id = entry.get("id").and_then(|v| v.as_str()).unwrap_or("-");
-            let desc = entry
-                .get("description")
-                .and_then(|v| v.as_str())
-                .unwrap_or("-");
+            let desc = entry.get("description").and_then(|v| v.as_str()).unwrap_or("-");
 
             let aliases = entry
                 .get("aliases")
                 .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|a| a.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                })
+                .map(|arr| arr.iter().filter_map(|a| a.as_str()).collect::<Vec<_>>().join(", "))
                 .unwrap_or_else(|| "-".to_string());
 
             let type_str = entry.get("type").and_then(|v| v.as_str()).unwrap_or("-");

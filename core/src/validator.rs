@@ -40,10 +40,8 @@ impl Validator {
                     if let Some(aliases) = entry.get("aliases").and_then(|v| v.as_array()) {
                         for alias in aliases {
                             if let Some(alias_str) = alias.as_str() {
-                                alias_map.insert(
-                                    alias_str.to_lowercase(),
-                                    (group.group_id.clone(), entry_id.to_string()),
-                                );
+                                alias_map
+                                    .insert(alias_str.to_lowercase(), (group.group_id.clone(), entry_id.to_string()));
                             }
                         }
                     }
@@ -70,11 +68,7 @@ impl Validator {
     }
 
     /// validate entry เดียวตาม group_id
-    pub fn validate_entry(
-        &self,
-        group_id: &str,
-        entry: &Value,
-    ) -> Result<(), Vec<ValidationError>> {
+    pub fn validate_entry(&self, group_id: &str, entry: &Value) -> Result<(), Vec<ValidationError>> {
         let mut errors = Vec::new();
 
         // หา group
@@ -290,11 +284,7 @@ impl Validator {
                             .filter_map(|a| a.as_str().map(|s| s.to_string()))
                             .collect();
 
-                        let dup_errors = self.check_duplicate_aliases(
-                            &group.group_id,
-                            Some(entry_id),
-                            &alias_strings,
-                        );
+                        let dup_errors = self.check_duplicate_aliases(&group.group_id, Some(entry_id), &alias_strings);
                         all_errors.extend(dup_errors);
                     }
 
@@ -336,8 +326,7 @@ impl Validator {
 mod tests {
     use super::*;
     use crate::schema::{
-        CustomFieldConfig, FieldSchema, KeywordGroup, KeywordRegistry, Metadata, ValidationConfig,
-        ValidationRules,
+        CustomFieldConfig, FieldSchema, KeywordGroup, KeywordRegistry, Metadata, ValidationConfig, ValidationRules,
     };
     use serde_json::json;
     use std::collections::HashMap;

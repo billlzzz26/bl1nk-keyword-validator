@@ -1,284 +1,112 @@
-# bl1nk-keyword-validator
+# 🛡️ bl1nk Keyword Validator & Search Infrastructure
 
-Validation and search tool for bl1nk keyword registry. Supports multi-language search (Thai + English), schema enforcement, and CLI/library usage.
+**bl1nk Keyword Validator** คือโครงสร้างพื้นฐานสำหรับการจัดการคำสำคัญ (Keyword Infrastructure) ทำหน้าที่เป็น "Knowledge Backbone" ให้กับระบบเอเจนต์อัจฉริยะ โดยมุ่งเน้นที่ความถูกต้องของข้อมูลและการค้นหาที่แม่นยำสูง รองรับการทำงานทั้งในรูปแบบไลบรารี (Library) และเครื่องมือบรรทัดคำสั่ง (CLI)
 
-## Features
+## 🎯 วิสัยทัศน์ (Vision)
+โปรเจกต์นี้มุ่งเน้นการเป็น **ระบบค้นหาและตรวจสอบสคีมา (Search & Validation Engine)** ที่รองรับการทำงานร่วมกับระบบฐานข้อมูลคำสำคัญขนาดใหญ่ โดยเน้นประสิทธิภาพการค้นหาภาษาไทยอัจฉริยะและสถาปัตยกรรมข้อมูลที่ยืดหยุ่น เพื่อสนับสนุนการทำงานของ AI Agents ในการเข้าถึงข้อมูลที่ถูกต้อง
 
-- ✅ **Schema-based validation**: Enforce structure from JSON schema
-- ✅ **Multi-language search**: Search aliases in Thai and English seamlessly
-- ✅ **CLI tool**: Commands for validate, search, add, edit, show, list
-- ✅ **Library mode**: Reusable Rust library (`lib.rs`)
-- ✅ **JSON I/O**: Input/output as JSON for easy integration
-- ✅ **Error reporting**: Detailed validation errors with codes and messages
+## 🚀 ฟีเจอร์เด่น (Key Features)
 
-## Build
+- 🔍 **Smart Search (BM25)**: ระบบค้นหาที่คำนวณคะแนนความเกี่ยวข้อง (Relevance Scoring) ช่วยให้เจอผลลัพธ์ที่ตรงใจที่สุด
+- 🇹🇭 **Thai Language Optimization**: รองรับระบบ **Thai Bigram** และ **Tone-mark Insensitive Search** (ถอดวรรณยุกต์) ทำให้ค้นหาภาษาไทยได้แม่นยำแม้พิมพ์ไม่ครบ
+- ✅ **Strict Schema Validation**: ตรวจสอบโครงสร้างข้อมูลอย่างเข้มงวด รวมถึงการเช็ค Broken Links และ Namespace Isolation
+- 📂 **Multi-format Support**: รองรับทั้งไฟล์ **JSON** และ **YAML** เพื่อความสะดวกในการจัดการข้อมูล
+- 📡 **Project-wide Scanning**: คำสั่ง `Scan` สำหรับการกวาดหาและตรวจสอบไฟล์ Registry ทั่วทั้งโปรเจกต์โดยอัตโนมัติ
+- 🛠️ **Modern Architecture**: พัฒนาด้วย Rust (Edition 2024), ใช้ `Clap` v4, และระบบ Log ด้วย `Tracing`
 
-### Release Binary (optimized)
+## 🏗️ การติดตั้งและสร้าง (Build)
+
+### สร้างไฟล์รันหลัก (Optimized)
 ```bash
 cargo build --release
-# Binary: target/release/keyword-registry
+# ผลลัพธ์: target/release/keyword-registry
 ```
 
-### Install as global command
+### ติดตั้งเป็นคำสั่งในเครื่อง
 ```bash
-cargo install --path .
-# Command: keyword-registry
+cargo install --path cli
+# เรียกใช้ด้วยคำสั่ง: keyword-registry
 ```
 
-### Development
+## 📖 วิธีการใช้งาน (Usage)
+
+### คำสั่ง CLI หลัก
+
+#### 1. ค้นหาคำสำคัญ (Search)
 ```bash
-cargo build
-cargo run -- --help
-```
-
-## Usage
-
-### CLI Commands
-
-#### Validate entire schema
-```bash
-keyword-registry validate
-# or with custom schema path
-keyword-registry -s /path/to/schema.json validate
-```
-
-#### Validate single entry
-```bash
-keyword-registry validate bl1nk-visual-story-extension --group projects
-```
-
-#### Search keyword
-```bash
-# Search (human-readable output)
+# ค้นหาแบบปกติ (รองรับไทย/อังกฤษ)
 keyword-registry search "visual-story"
-keyword-registry search "ภาพเรื่อง"
 
-# Search (JSON output)
-keyword-registry search "mcp" --json
+# ค้นหาและแสดงผลเป็น JSON เพื่อนำไปใช้ต่อในโปรแกรมอื่น
+keyword-registry search "ภาพเรื่อง" --json
 ```
 
-#### Add new entry
+#### 2. สแกนและตรวจสอบทั้งโปรเจกต์ (Scan)
 ```bash
-# From JSON string
-keyword-registry add projects '{"id":"bl1nk-test","aliases":["test"],"type":"app","status":"active","description":"Test"}'
-
-# From JSON file
-keyword-registry add skills @entry.json
+# สแกนหาไฟล์ .json/.yaml และตรวจสอบความถูกต้อง
+keyword-registry scan --dir . --ignore "**/node_modules/**,**/target/**"
 ```
 
-#### Edit entry
+#### 3. ตรวจสอบความถูกต้อง (Validate)
 ```bash
-keyword-registry edit bl1nk-visual-story-extension \
-  --group projects \
-  --field status \
-  --value "archived"
+# ตรวจสอบทั้งไฟล์
+keyword-registry validate
+
+# ตรวจสอบเฉพาะรายการที่ระบุ
+keyword-registry validate item-id --group projects
 ```
 
-#### Show entry details
+#### 4. การจัดการข้อมูล (CRUD)
 ```bash
-keyword-registry show bl1nk-visual-story-extension
-keyword-registry show bl1nk-visual-story-extension --json
+# เพิ่มรายการใหม่ (รองรับ @ไฟล์)
+keyword-registry add projects @new-entry.json
+
+# แก้ไขข้อมูลรายการ
+keyword-registry edit item-id --group projects --field description --value "ใหม่"
 ```
 
-#### List group entries
-```bash
-keyword-registry list projects
-keyword-registry list skills --json
-```
-
-### Library Usage
+### การใช้งานในฐานะไลบรารี (Library Usage)
 
 ```rust
 use bl1nk_keyword_core::{load_registry, KeywordSearch, Validator};
 
-// Load registry
-let registry = load_registry("keyword-registry.json")?;
+// โหลดข้อมูล (รองรับ JSON/YAML อัตโนมัติจากนามสกุลไฟล์)
+let registry = load_registry("keyword-registry.yaml")?;
 
-// Search
+// เริ่มระบบค้นหาอัจฉริยะ
 let search = KeywordSearch::new(registry.clone());
-let results = search.search("visual-story");
+let results = search.search("ค้นหาคำนี้");
 
-// Validate
+// เริ่มระบบตรวจสอบความถูกต้อง
 let validator = Validator::new(registry);
 validator.validate_registry()?;
 ```
 
-## Schema Structure
-
-```json
-{
-  "version": "1.1.0",
-  "metadata": { ... },
-  "groups": [
-    {
-      "groupId": "projects",
-      "baseFieldsSchema": { ... },
-      "customFieldAllowed": { ... },
-      "entries": [ ... ]
-    }
-  ],
-  "validation": {
-    "rules": { ... },
-    "errorMessages": { ... }
-  }
-}
-```
-
-### Supported Field Types
-
-- `string`: Text with optional pattern (regex) and length constraints
-- `array`: Collections with item type validation
-- `enum`: Predefined values
-- `pattern`: Regex-validated strings
-
-### Custom Fields
-
-- ✅ 1 custom field per entry
-- ✅ Type-locked (must match schema type for group)
-- ✅ No naming conflicts with base fields
-
-## Output Format
-
-### Success Response
-```json
-{
-  "valid": true,
-  "data": { ... }
-}
-```
-
-### Error Response
-```json
-{
-  "valid": false,
-  "errors": [
-    {
-      "code": "INVALID_PATTERN",
-      "field": "id",
-      "message": "ID must match pattern for group type"
-    }
-  ]
-}
-```
-
-## Error Codes
-
-- `INVALID_ID`: ID doesn't match group pattern
-- `DUPLICATE_ID`: ID already exists
-- `DUPLICATE_ALIAS`: Alias already used
-- `MISSING_REQUIRED_FIELD`: Required field missing
-- `INVALID_TYPE`: Type mismatch
-- `INVALID_ENUM`: Value not in allowed list
-- `INVALID_PATTERN`: Doesn't match regex
-- `ALIAS_TOO_SHORT`: Less than min length
-- `ALIAS_TOO_LONG`: Exceeds max length
-- `DESCRIPTION_TOO_LONG`: Exceeds 255 characters
-- `TOO_MANY_CUSTOM_FIELDS`: Exceeds custom field limit
-
-## Integration
-
-### Node.js / Bun
-```javascript
-import { spawn } from "child_process";
-
-const proc = spawn("keyword-registry", ["search", "mcp", "--json"]);
-let output = "";
-
-proc.stdout.on("data", (data) => {
-  output += data.toString();
-});
-
-proc.on("close", (code) => {
-  const result = JSON.parse(output);
-  console.log(result);
-});
-```
-
-### Python
-```python
-import subprocess
-import json
-
-result = subprocess.run(
-    ["keyword-registry", "search", "visual-story", "--json"],
-    capture_output=True,
-    text=True
-)
-
-data = json.loads(result.stdout)
-print(data)
-```
-
-### MCP Server
-Wrap commands as MCP tools — see `mcp-integration.rs` (future)
-
-## Development
-
-### Run tests
-```bash
-cargo test
-```
-
-### Check code
-```bash
-cargo clippy
-```
-
-### Format
-```bash
-cargo fmt
-```
-
-## Dependencies
-
-- `serde` / `serde_json`: JSON serialization
-- `clap`: CLI argument parsing
-- `regex`: Pattern matching
-- `anyhow` / `thiserror`: Error handling
-
-## Project Structure
+## 📂 โครงสร้างโปรเจกต์ (Project Structure)
 
 ```
 bl1nk-keyword-validator/
-├── Cargo.toml           # Workspace root
-├── core/                # Core logic crate
-│   ├── Cargo.toml
+├── core/                # ไลบรารีหลัก (Logic, Search, Validation)
 │   └── src/
-│       ├── lib.rs       # Main entry & persistence
-│       ├── schema.rs    # Data models
-│       ├── validator.rs # Logic for validation
-│       ├── search.rs    # Logic for searching
-│       └── error.rs     # Error definitions
-├── cli/                 # CLI interface crate
-│   ├── Cargo.toml
-│   └── src/
-│       └── main.rs      # CLI implementation
-├── scripts/             # Utility scripts
-│   └── bump-version.sh  # Version management
-├── README.md
-├── SPEC.md
-└── Justfile
+│       ├── lib.rs       # Entry point & Persistence
+│       ├── search.rs    # BM25 & Thai NLP Search
+│       ├── validator.rs # Validation Logic
+│       └── schema.rs    # Data Models
+├── cli/                 # เครื่องมือบรรทัดคำสั่ง (Interface)
+│   └── src/main.rs      # CLI Implementation
+└── scripts/             # สคริปต์ช่วยพัฒนา
 ```
 
-## Exit Codes
+## 📝 รหัสข้อผิดพลาด (Error Codes)
 
-- `0`: Success
-- `1`: Validation failed / Entry not found / Error
-- `2`: Invalid arguments
+- `DUPLICATE_ID`: พบ ID ซ้ำในกลุ่มเดียวกัน
+- `DUPLICATE_ALIAS`: พบชื่อแฝงซ้ำในระบบ
+- `BROKEN_RELATIONSHIP`: การอ้างอิง ID (relatedIds) ไม่ถูกต้อง
+- `INVALID_PATTERN`: ข้อมูลไม่ตรงตามรูปแบบ Regex ที่กำหนด
+- `ALIAS_TOO_SHORT/LONG`: ความยาวชื่อแฝงไม่เป็นไปตามกฎ
 
-## Future
+## 👨‍💻 ผู้พัฒนา
+**อาจารย์ (Dollawatt)** และทีมงาน **bl1nk**
 
-- [ ] MCP server integration
-- [ ] Batch operations
-- [ ] Schema migration tools
-- [ ] Watch mode (auto-validate on file change)
-- [ ] TOML support
-- [ ] Remote schema URL support
-
-## Author
-
-อาจารย์ (Dollawatt)
-
-## License
-
-MIT
+## ⚖️ สัญญาอนุญาต (License)
+MIT License
