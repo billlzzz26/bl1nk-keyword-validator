@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "core",
-    "cli",
+    "crate/core",
+    "crate/cli",
 ]
 resolver = "2"
 

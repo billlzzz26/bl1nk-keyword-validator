@@ -7,12 +7,43 @@ use walkdir::WalkDir;
 /// Usage statistics: keyword_id -> { filename: count }
 pub type UsageStats = HashMap<String, HashMap<String, usize>>;
 
+/// Supported file extensions for text scanning
+pub const SUPPORTED_EXTENSIONS: &[&str] = &[
+    // Source code
+    "rs", "py", "js", "ts", "go", "java", "cpp", "c", "h", "sh", "rb", "php", "swift", "kt",
+    "scala", "r", "lua", "pl", "pm", "ex", "exs", "erl", "hs", "ml", "jl", // Docs
+    "md", "txt", "rst", // Config
+    "json", "yaml", "yml", "toml", "xml", "ini", "conf", // Web
+    "html", "css", "scss", "vue", "svelte",
+];
+
+/// Skip binary/unsupported extensions (explicitly unsupported)
+pub const UNSUPPORTED_EXTENSIONS: &[&str] = &[
+    // Binary
+    "exe", "dll", "so", "dylib", "bin", "class", "jar", "war", "pyc", "pyo", // Images
+    "png", "jpg", "jpeg", "gif", "svg", "ico", "webp", "bmp", "tiff", "tif",
+    // Compressed
+    "zip", "tar", "gz", "rar", "7z", "bz2", "xz", // Media
+    "mp3", "mp4", "wav", "avi", "mov", "mkv", "flac",
+];
+
 /// Count keyword usage in a single file
 pub fn count_usage_in_path<P: AsRef<Path>>(
     path: P,
     registry: &KeywordRegistry,
 ) -> Result<HashMap<String, usize>, ValidatorError> {
     let path = path.as_ref();
+
+    // Check if extension is unsupported (binary)
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        if UNSUPPORTED_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
+            return Err(ValidatorError::FileIo(format!(
+                "Unsupported binary file type: {}",
+                ext
+            )));
+        }
+    }
+
     let content = std::fs::read_to_string(path)
         .map_err(|_| ValidatorError::FileIo(format!("Failed to read: {:?}", path)))?;
 
@@ -23,7 +54,7 @@ pub fn count_usage_in_path<P: AsRef<Path>>(
 pub fn count_usage_in_dir<P: AsRef<Path>>(
     dir: P,
     registry: &KeywordRegistry,
-    extensions: Option<&[&str]>,
+    _extensions: Option<&[&str]>,
 ) -> Result<UsageStats, ValidatorError> {
     let dir = dir.as_ref();
     let mut stats: UsageStats = HashMap::new();
@@ -35,10 +66,10 @@ pub fn count_usage_in_dir<P: AsRef<Path>>(
     {
         let path = entry.path();
         if path.is_file() {
-            let ext = path.extension().and_then(|e| e.to_str());
-            if let Some(ext) = ext {
-                let skip = extensions.map(|exts| !exts.contains(&ext)).unwrap_or(false);
-                if skip {
+            // Skip unsupported extensions
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                let ext_lower = ext.to_lowercase();
+                if UNSUPPORTED_EXTENSIONS.contains(&ext_lower.as_str()) {
                     continue;
                 }
             }
@@ -49,7 +80,7 @@ pub fn count_usage_in_dir<P: AsRef<Path>>(
             for (keyword_id, count) in file_stats {
                 stats
                     .entry(keyword_id)
-                    .or_insert_with(HashMap::new)
+                    .or_default()
                     .insert(filename.clone(), count);
             }
         }
@@ -70,8 +101,59 @@ pub fn get_total_usage(stats: &UsageStats) -> HashMap<String, usize> {
 pub fn get_top_keywords(stats: &UsageStats, n: usize) -> Vec<(String, usize)> {
     let totals = get_total_usage(stats);
     let mut sorted: Vec<_> = totals.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1));
     sorted.into_iter().take(n).collect()
+}
+
+/// Find related keywords based on co-occurrence in same files
+pub fn get_correlation_matrix(stats: &UsageStats) -> HashMap<String, Vec<String>> {
+    let mut correlations: HashMap<String, Vec<String>> = HashMap::new();
+
+    // Build correlation: if keyword A and B appear in same file, they are correlated
+    for kw1 in stats.keys() {
+        let related: Vec<String> = stats
+            .iter()
+            .filter_map(|(kw2, kw2_files)| {
+                if kw1 != kw2 {
+                    // Check if both keywords appear in any common file
+                    if stats
+                        .get(kw1)
+                        .map(|kw1_files| kw1_files.iter().any(|(f, _)| kw2_files.contains_key(f)))
+                        .unwrap_or(false)
+                    {
+                        Some(kw2.clone())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if !related.is_empty() {
+            correlations.insert(kw1.clone(), related);
+        }
+    }
+
+    correlations
+}
+
+/// Get related keywords for a specific keyword from schema
+pub fn find_related(registry: &KeywordRegistry, keyword_id: &str) -> Vec<String> {
+    for group in &registry.groups {
+        for entry in &group.entries {
+            if entry.get("id").and_then(|v| v.as_str()) == Some(keyword_id) {
+                if let Some(related) = entry.get("related_to").and_then(|v| v.as_array()) {
+                    return related
+                        .iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect();
+                }
+            }
+        }
+    }
+    Vec::new()
 }
 
 // Internal: count keywords in string content
@@ -132,7 +214,8 @@ mod tests {
                         "aliases": ["ka", "k_a"],
                         "description": "test keyword",
                         "type": "constant",
-                        "status": "active"
+                        "status": "active",
+                        "related_to": ["keyword_b", "keyword_c"]
                     }),
                     serde_json::json!({
                         "id": "keyword_b",
@@ -144,8 +227,6 @@ mod tests {
                 ],
             }],
             validation: Default::default(),
-            language_mapping: None,
-            detection_system: None,
         }
     }
 
@@ -165,5 +246,35 @@ mod tests {
         let content = "no keywords here";
         let counts = count_keywords_in_content(content, &registry);
         assert!(counts.is_empty());
+    }
+
+    #[test]
+    fn test_find_related() {
+        let registry = make_test_registry();
+        let related = find_related(&registry, "keyword_a");
+        assert!(related.contains(&"keyword_b".to_string()));
+        assert!(related.contains(&"keyword_c".to_string()));
+    }
+
+    #[test]
+    fn test_get_correlation_matrix() {
+        let mut stats: UsageStats = HashMap::new();
+        stats
+            .entry("a".to_string())
+            .or_default()
+            .insert("file1.rs".to_string(), 1);
+        stats
+            .entry("b".to_string())
+            .or_default()
+            .insert("file1.rs".to_string(), 1);
+        stats
+            .entry("c".to_string())
+            .or_default()
+            .insert("file2.rs".to_string(), 1);
+
+        let corr = get_correlation_matrix(&stats);
+        assert!(corr.contains_key("a"));
+        assert!(corr.get("a").unwrap().contains(&"b".to_string()));
+        assert!(!corr.get("a").unwrap().contains(&"c".to_string()));
     }
 }

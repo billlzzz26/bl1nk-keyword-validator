@@ -86,13 +86,27 @@
           "aliases": [
             "mintlify-docs",
             "docs-builder",
-            "api-docs",
+            "mintlify-api-docs",
             "เอกสารซ่อม"
           ],
           "type": "skill",
           "status": "active",
           "description": "Reusable skill for building Mintlify documentation",
           "tags": ["documentation", "api-reference", "markdown"]
+        },
+        {
+          "id": "agent-skills-kb",
+          "aliases": ["skills-kb", "ทักษะ-kb"],
+          "type": "library",
+          "status": "active",
+          "description": "Knowledge base for agent skills"
+        },
+        {
+          "id": "mcp-client-builder",
+          "aliases": ["mcp-builder"],
+          "type": "tool",
+          "status": "planning",
+          "description": "Tool for building MCP clients"
         }
       ]
     },

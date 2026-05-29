@@ -3,5 +3,6 @@
     "checkpointing": {
       "enabled": true
     }
-  }
+  },
+  "$version": 3
 }

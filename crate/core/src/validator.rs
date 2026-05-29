@@ -3,29 +3,33 @@ use crate::schema::KeywordRegistry;
 use regex::Regex;
 use serde_json::Value;
 use std::collections::HashMap;
+use tracing;
 
 pub struct Validator {
     registry: KeywordRegistry,
 }
 
-/// ตรวจสอบว่า version รองรับหรือไม่ (>= 0.2.0)
-fn is_supported_version(version: &str) -> bool {
-    // แยก version string ออกมาเป็นส่วนๆ
-    let parts: Vec<usize> = version
-        .split('.')
-        .filter_map(|p| p.parse().ok())
-        .collect();
-    
-    match parts.as_slice() {
-        [major, minor, _patch] if *major >= 1 => true,
-        [0, minor, _patch] if *minor >= 2 => true,
-        _ => false,
-    }
-}
+const SUPPORTED_VERSION: &str = "1.1.0";
 
 impl Validator {
     pub fn new(registry: KeywordRegistry) -> Self {
         Self { registry }
+    }
+
+    /// ดึงข้อความแสดงข้อผิดพลาดจากกฎการตรวจสอบในสคีมา
+    pub fn get_error_message(&self, error_code: &str, params: HashMap<&str, String>) -> String {
+        self.registry
+            .validation
+            .error_messages
+            .get(error_code)
+            .map(|msg| {
+                let mut result = msg.clone();
+                for (key, value) in params {
+                    result = result.replace(&format!("{{{}}}", key), &value);
+                }
+                result
+            })
+            .unwrap_or_else(|| format!("Validation error: {}", error_code))
     }
 
     /// ตรวจสอบ duplicate aliases ในกลุ่มเดียวกันหรือข้ามกลุ่ม
@@ -36,6 +40,7 @@ impl Validator {
         editing_entry_id: Option<&str>,
         new_aliases: &[String],
     ) -> Vec<ValidationError> {
+        tracing::debug!("🔍 Checking duplicate aliases for group: {}", group_id);
         let mut errors = Vec::new();
         let mut alias_map: HashMap<String, (String, String)> = HashMap::new(); // alias -> (group_id, entry_id)
 
@@ -68,12 +73,13 @@ impl Validator {
         for new_alias in new_aliases {
             let lower_alias = new_alias.to_lowercase();
             if let Some((existing_group, existing_entry)) = alias_map.get(&lower_alias) {
+                let mut params = HashMap::new();
+                params.insert("group", existing_group.clone());
+                params.insert("entry", existing_entry.clone());
+
                 errors.push(ValidationError {
                     code: "DUPLICATE_ALIAS".to_string(),
-                    message: format!(
-                        "Alias '{}' already exists in group '{}' entry '{}'",
-                        new_alias, existing_group, existing_entry
-                    ),
+                    message: self.get_error_message("DUPLICATE_ALIAS", params),
                     field: Some("aliases".to_string()),
                 });
             }
@@ -88,6 +94,7 @@ impl Validator {
         group_id: &str,
         entry: &Value,
     ) -> Result<(), Vec<ValidationError>> {
+        tracing::debug!("🧪 Validating entry in group: {}", group_id);
         let mut errors = Vec::new();
 
         // หา group
@@ -107,9 +114,12 @@ impl Validator {
         // ตรวจสอบ required base fields
         for (field_name, field_schema) in &group.base_fields_schema {
             if field_schema.required.unwrap_or(false) && entry.get(field_name).is_none() {
+                let mut params = HashMap::new();
+                params.insert("field", field_name.clone());
+
                 errors.push(ValidationError {
                     code: "MISSING_REQUIRED_FIELD".to_string(),
-                    message: format!("Missing required field '{}'", field_name),
+                    message: self.get_error_message("MISSING_REQUIRED_FIELD", params),
                     field: Some(field_name.clone()),
                 });
             }
@@ -129,9 +139,9 @@ impl Validator {
                                         if !re.is_match(s) {
                                             errors.push(ValidationError {
                                                 code: "INVALID_PATTERN".to_string(),
-                                                message: format!(
-                                                    "Field '{}' value '{}' does not match pattern '{}'",
-                                                    field_name, s, pattern
+                                                message: self.get_error_message(
+                                                    "INVALID_PATTERN",
+                                                    HashMap::new(),
                                                 ),
                                                 field: Some(field_name.clone()),
                                             });
@@ -153,25 +163,24 @@ impl Validator {
                             // 2. ตรวจสอบ Enum Values
                             if let Some(allowed_values) = &field_schema.values {
                                 if !allowed_values.contains(&s.to_string()) {
+                                    let mut params = HashMap::new();
+                                    params.insert("values", allowed_values.join(", "));
+
                                     errors.push(ValidationError {
                                         code: "INVALID_ENUM".to_string(),
-                                        message: format!(
-                                            "Field '{}' value '{}' must be one of: {}",
-                                            field_name,
-                                            s,
-                                            allowed_values.join(", ")
-                                        ),
+                                        message: self.get_error_message("INVALID_ENUM", params),
                                         field: Some(field_name.clone()),
                                     });
                                 }
                             }
                         } else {
+                            let mut params = HashMap::new();
+                            params.insert("type", "string/enum".to_string());
+                            params.insert("actual", format!("{:?}", field_value));
+
                             errors.push(ValidationError {
                                 code: "INVALID_TYPE".to_string(),
-                                message: format!(
-                                    "Field '{}' expected type 'string' but got {:?}",
-                                    field_name, field_value
-                                ),
+                                message: self.get_error_message("INVALID_TYPE", params),
                                 field: Some(field_name.clone()),
                             });
                         }
@@ -180,14 +189,15 @@ impl Validator {
                         if let Some(arr) = field_value.as_array() {
                             // ตรวจสอบ array item type
                             if let Some(item_type) = &field_schema.item_type {
-                                for (idx, item) in arr.iter().enumerate() {
+                                for item in arr.iter() {
                                     if item_type.as_str() == "string" && !item.is_string() {
+                                        let mut params = HashMap::new();
+                                        params.insert("type", item_type.clone());
+                                        params.insert("actual", format!("{:?}", item));
+
                                         errors.push(ValidationError {
                                             code: "INVALID_TYPE".to_string(),
-                                            message: format!(
-                                                "Array item {} in field '{}' expected type 'string'",
-                                                idx, field_name
-                                            ),
+                                            message: self.get_error_message("INVALID_TYPE", params),
                                             field: Some(field_name.clone()),
                                         });
                                     }
@@ -202,9 +212,9 @@ impl Validator {
                                         if alias_str.len() < rules.alias_min_length {
                                             errors.push(ValidationError {
                                                 code: "ALIAS_TOO_SHORT".to_string(),
-                                                message: format!(
-                                                    "Alias '{}' is too short (min {} chars)",
-                                                    alias_str, rules.alias_min_length
+                                                message: self.get_error_message(
+                                                    "ALIAS_TOO_SHORT",
+                                                    HashMap::new(),
                                                 ),
                                                 field: Some("aliases".to_string()),
                                             });
@@ -212,9 +222,9 @@ impl Validator {
                                         if alias_str.len() > rules.alias_max_length {
                                             errors.push(ValidationError {
                                                 code: "ALIAS_TOO_LONG".to_string(),
-                                                message: format!(
-                                                    "Alias '{}' is too long (max {} chars)",
-                                                    alias_str, rules.alias_max_length
+                                                message: self.get_error_message(
+                                                    "ALIAS_TOO_LONG",
+                                                    HashMap::new(),
                                                 ),
                                                 field: Some("aliases".to_string()),
                                             });
@@ -223,12 +233,13 @@ impl Validator {
                                 }
                             }
                         } else {
+                            let mut params = HashMap::new();
+                            params.insert("type", "array".to_string());
+                            params.insert("actual", format!("{:?}", field_value));
+
                             errors.push(ValidationError {
                                 code: "INVALID_TYPE".to_string(),
-                                message: format!(
-                                    "Field '{}' expected type 'array' but got {:?}",
-                                    field_name, field_value
-                                ),
+                                message: self.get_error_message("INVALID_TYPE", params),
                                 field: Some(field_name.clone()),
                             });
                         }
@@ -247,15 +258,16 @@ impl Validator {
 
     /// validate ทั้ง registry
     pub fn validate_registry(&self) -> Result<(), Vec<ValidationError>> {
+        tracing::debug!("🏗️ Validating full registry");
         let mut all_errors = Vec::new();
 
         // 0. ตรวจสอบ Version Compatibility
-        if !is_supported_version(&self.registry.version) {
+        if self.registry.version != SUPPORTED_VERSION {
             all_errors.push(ValidationError {
                 code: "INCOMPATIBLE_VERSION".to_string(),
                 message: format!(
-                    "Registry version '{}' is not supported. Supported versions: >= 0.2.0, >= 1.0.0",
-                    self.registry.version
+                    "Registry version '{}' is not supported. Supported version is '{}'",
+                    self.registry.version, SUPPORTED_VERSION
                 ),
                 field: None,
             });
@@ -274,6 +286,7 @@ impl Validator {
 
         for group in &self.registry.groups {
             let mut group_ids = std::collections::HashSet::new();
+            tracing::debug!("  - Group: {}", group.group_id);
 
             for entry in group.entries.iter() {
                 if let Some(entry_id) = entry.get("id").and_then(|v| v.as_str()) {
@@ -281,10 +294,7 @@ impl Validator {
                     if !group_ids.insert(entry_id.to_string()) {
                         all_errors.push(ValidationError {
                             code: "DUPLICATE_ID".to_string(),
-                            message: format!(
-                                "ID '{}' is duplicated within group namespace '{}'",
-                                entry_id, group.group_id
-                            ),
+                            message: self.get_error_message("DUPLICATE_ID", HashMap::new()),
                             field: Some("id".to_string()),
                         });
                     }
@@ -313,14 +323,14 @@ impl Validator {
 
                     // 3. ตรวจสอบ Broken Links (relatedIds)
                     if let Some(related_ids) = entry.get("relatedIds").and_then(|v| v.as_array()) {
-                        for (idx, rel_id_val) in related_ids.iter().enumerate() {
+                        for rel_id_val in related_ids.iter() {
                             if let Some(rel_id) = rel_id_val.as_str() {
                                 if !all_valid_ids.contains(rel_id) {
                                     all_errors.push(ValidationError {
                                         code: "BROKEN_RELATIONSHIP".to_string(),
-                                        message: format!(
-                                            "Entry '{}' references non-existent ID '{}' in relatedIds[{}]",
-                                            entry_id, rel_id, idx
+                                        message: self.get_error_message(
+                                            "BROKEN_RELATIONSHIP",
+                                            HashMap::new(),
                                         ),
                                         field: Some("relatedIds".to_string()),
                                     });
@@ -456,14 +466,13 @@ mod tests {
                 },
                 error_messages: HashMap::new(),
             },
-            ..Default::default()
         }
     }
 
     #[test]
     fn test_validate_registry_incompatible_version() {
         let mut registry = make_test_registry();
-        registry.version = "0.1.0".to_string(); // เก่ากว่าที่รองรับ (รองรับ 0.2.0+ และ 1.0.0+)
+        registry.version = "1.0.0".to_string(); // เก่ากว่าที่รองรับ
 
         let validator = Validator::new(registry);
         let result = validator.validate_registry();

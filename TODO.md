@@ -9,15 +9,32 @@
 - [x] Add CLI command 'bl1nk-keyword usage <path>' for usage counting
 - [x] Add tests for scanner and usage stats
 
-## Notes
-- Support recursive directory scanning
-- Count keyword occurrences per file: `{ "keyword_id": { "file.rs": count } }`
-- Use existing KeywordRegistry for comparison
+## Improvements Needed
+- [ ] Add relationship fields (related_to, parent_child) for relative keyword analysis
+- [ ] Use schema errorMessages for meaningful validation errors
+- [ ] Document supported/unsupported file extensions
+- [x] Run fmt + clippy checks
 
-## Status: COMPLETE - 7/7 tasks finished
+## Supported File Extensions
 
-## Files Modified
-- crate/core/Cargo.toml - added walkdir dependency
-- crate/core/src/scanner.rs - new module (count_usage_in_path, count_usage_in_dir, get_total_usage, get_top_keywords)
-- crate/core/src/lib.rs - added scanner re-exports
-- crate/cli/src/main.rs - added Usage command
+### Supported (text-based)
+- Source code: `rs`, `py`, `js`, `ts`, `go`, `java`, `cpp`, `c`, `h`, `sh`, `rb`, `php`, `swift`, `kt`, `scala`
+- Docs: `md`, `txt`, `rst`
+- Config: `json`, `yaml`, `yml`, `toml`, `xml`
+- Web: `html`, `css`, `scss`, `vue`, `svelte`
+
+### Unsupported (binary/compiled)
+- Images: `png`, `jpg`, `gif`, `svg` (skip)
+- Binary: `exe`, `dll`, `so`, `dylib`, `bin` (skip)
+- Compressed: `zip`, `tar`, `gz`, `rar` (skip)
+
+## Relationship Analysis Plan
+- Add `related_to` array field in entry schema
+- Add `parent_child` for hierarchical relationships
+- `find_related(keyword_id)` - returns related keywords
+- `get_correlation_matrix()` - keyword co-occurrence stats
+
+## Error Messages Usage
+Schema has `errorMessages` in validation section - scanner should use these for meaningful errors like:
+- `MAPPING_NOT_FOUND`: No mapping found for '{term}' in language '{language}'
+- `CONFIDENCE_OUT_OF_RANGE`: Confidence score must be 0-1, got {value}

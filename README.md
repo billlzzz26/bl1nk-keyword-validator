@@ -86,14 +86,16 @@ validator.validate_registry()?;
 
 ```
 bl1nk-keyword-validator/
-├── core/                # ไลบรารีหลัก (Logic, Search, Validation)
-│   └── src/
-│       ├── lib.rs       # Entry point & Persistence
-│       ├── search.rs    # BM25 & Thai NLP Search
-│       ├── validator.rs # Validation Logic
-│       └── schema.rs    # Data Models
-├── cli/                 # เครื่องมือบรรทัดคำสั่ง (Interface)
-│   └── src/main.rs      # CLI Implementation
+├── crate/
+│   ├── core/            # ไลบรารีหลัก (Logic, Search, Validation)
+│   │   └── src/
+│   │       ├── lib.rs       # Entry point & Persistence
+│   │       ├── search.rs    # BM25 & Thai NLP Search
+│   │       ├── validator.rs # Validation Logic
+│   │       └── schema.rs    # Data Models
+│   └── cli/             # เครื่องมือบรรทัดคำสั่ง (Interface)
+│       └── src/main.rs      # CLI Implementation
+├── settings/            # ไฟล์สคีมาและคอนฟิกูเรชัน
 └── scripts/             # สคริปต์ช่วยพัฒนา
 ```
 
