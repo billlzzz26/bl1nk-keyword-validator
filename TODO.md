@@ -14,6 +14,11 @@
 - [ ] Use schema errorMessages for meaningful validation errors
 - [ ] Document supported/unsupported file extensions
 - [x] Run fmt + clippy checks
+- [x] Stabilize codebase and fix clippy warnings
+- [x] move crates to crate/ directory
+- [x] Implement Thai tone-mark insensitive search
+- [x] Update supported version to 1.1.0
+- [ ] Push to GitHub (requires manual authentication)
 
 ## Supported File Extensions
 
